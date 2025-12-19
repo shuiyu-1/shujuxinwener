@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>预制菜：争议背后的真相</title>
+    <title>预制菜不讨喜，为何还有人吃？</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,21 +18,20 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#7B61FF',
-                        accent: '#8A9FD1',
-                        secondary: '#D1A98A',
-                        tertiary: '#8AD1B8',
-                        purple: '#A98AD1',
-                        pink: '#D18A9F',
-                        cyan: '#8AD1D1',
-                        light: '#E5E7EB',
-                        dark: '#111827',
-                        darker: '#0B111F',
-                        muted: '#9CA3AF',
+                        primary: '#E74C3C', // 暖红
+                        secondary: '#F39C12', // 橙黄
+                        tertiary: '#F1C40F', // 亮黄
+                        accent: '#E67E22', // 橙红
+                        warmRed: '#C0392B',
+                        warmOrange: '#D35400',
+                        warmYellow: '#D4AC0D',
+                        light: '#F8F5F0',
+                        dark: '#3D2B1F',
+                        darker: '#1C140D',
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
-                        serif: ['Noto Serif SC', 'serif'],
+                        serif: ['"Noto Serif SC"', 'serif'],
                     },
                 }
             }
@@ -39,837 +40,1422 @@
     
     <style type="text/tailwindcss">
         @layer utilities {
-            .text-shadow {
-                text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            .content-auto {
+                content-visibility: auto;
             }
             .text-shadow-lg {
-                text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+                text-shadow: 0 2px 4px rgba(0,0,0,0.5);
             }
-            .section-fade {
-                opacity: 0;
-                transform: translateY(30px);
-                transition: opacity 0.8s ease, transform 0.8s ease;
+            .bg-gradient-warm {
+                background: linear-gradient(135deg, rgba(211, 84, 0, 0.1) 0%, rgba(212, 172, 13, 0.05) 100%);
             }
-            .section-visible {
-                opacity: 1;
-                transform: translateY(0);
+            .bg-gradient-yellow {
+                background: linear-gradient(135deg, rgba(241, 196, 15, 0.1) 0%, rgba(243, 156, 18, 0.05) 100%);
             }
-            .scrollbar-hide::-webkit-scrollbar {
-                display: none;
-            }
-            .scrollbar-hide {
-                -ms-overflow-style: none;
-                scrollbar-width: none;
-            }
-            .image-hover {
-                transition: transform 0.5s ease, box-shadow 0.5s ease;
-            }
-            .image-hover:hover {
-                transform: scale(1.02);
-                box-shadow: 0 10px 25px -5px rgba(138, 159, 209, 0.3);
-            }
-            .card-gradient {
-                background: linear-gradient(145deg, rgba(17, 24, 39, 0.8), rgba(11, 17, 31, 0.95));
-            }
-            .bg-gradient-accent {
-                background: linear-gradient(135deg, rgba(138, 159, 209, 0.1), rgba(138, 159, 209, 0.05));
-            }
-            .bg-gradient-secondary {
-                background: linear-gradient(135deg, rgba(209, 169, 138, 0.1), rgba(209, 169, 138, 0.05));
-            }
-            .bg-gradient-tertiary {
-                background: linear-gradient(135deg, rgba(138, 209, 184, 0.1), rgba(138, 209, 184, 0.05));
-            }
-            .word-cloud-item {
+            .card-hover {
                 transition: all 0.3s ease;
             }
-            .word-cloud-item:hover {
-                transform: scale(1.1);
-                text-shadow: 0 0 10px currentColor;
+            .card-hover:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
             }
+        }
+        /* 强制词云Canvas可见，隐藏控制面板，设为透明背景 */
+        #bullet-cloud canvas {
+            position: relative !important;
+            z-index: 10 !important;
+            background: transparent !important;
+        }
+        /* 隐藏词云的控制、筛选与统计面板（视觉上不显示） */
+        #bc-controls, #bc-filter, #bc-stats {
+            display: none !important;
         }
     </style>
 </head>
-<body class="bg-darker text-light font-sans antialiased scrollbar-hide">
-    <!-- 导航栏 -->
-    <header class="fixed top-0 left-0 right-0 z-50 bg-darker/80 backdrop-blur-md border-b border-accent/20">
+<body class="bg-darker text-light font-sans antialiased">
+    <!-- 导航栏 - 简化样式 -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-darker/95 backdrop-blur-md border-b border-accent/30">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
                 <h1 class="text-xl sm:text-2xl font-serif font-bold text-accent">预制菜观察</h1>
                 <nav class="hidden md:block">
-                    <ul class="flex space-x-8">
-                        <li><a href="#intro" class="text-light/80 hover:text-accent transition-colors duration-300">引言</a></li>
-                        <li><a href="#consumer" class="text-light/80 hover:text-secondary transition-colors duration-300">消费者视角</a></li>
-                        <li><a href="#restaurant" class="text-light/80 hover:text-tertiary transition-colors duration-300">餐厅选择</a></li>
-                        <li><a href="#standard" class="text-light/80 hover:text-primary transition-colors duration-300">国家标准</a></li>
-                        <li><a href="#production" class="text-light/80 hover:text-purple transition-colors duration-300">生产真相</a></li>
+                    <ul class="flex space-x-6">
+                        <li><a href="#intro" class="text-light/80 hover:text-accent transition-colors duration-300 text-sm sm:text-base">引言</a></li>
+                        <li><a href="#attitude" class="text-light/80 hover:text-tertiary transition-colors duration-300 text-sm sm:text-base">消费态度</a></li>
+                        <li><a href="#restaurant" class="text-light/80 hover:text-secondary transition-colors duration-300 text-sm sm:text-base">餐厅选择</a></li>
+                        <li><a href="#standard" class="text-light/80 hover:text-primary transition-colors duration-300 text-sm sm:text-base">国家政策</a></li>
+                        <li><a href="#production" class="text-light/80 hover:text-warmOrange transition-colors duration-300 text-sm sm:text-base">生产真相</a></li>
+                        <li><a href="#knowledge" class="text-light/80 hover:text-warmYellow transition-colors duration-300 text-sm sm:text-base">知识图谱</a></li>
+                        <li><a href="#calculator-section" class="text-light/80 hover:text-secondary transition-colors duration-300 text-sm sm:text-base">消费计算</a></li>
                     </ul>
                 </nav>
-                <button id="mobile-menu-button" class="md:hidden text-light hover:text-accent">
-                    <i class="fa fa-bars text-xl"></i>
-                </button>
-            </div>
-        </div>
-        <!-- 移动端菜单 -->
-        <div id="mobile-menu" class="hidden md:hidden bg-darker/95 backdrop-blur-md border-b border-accent/20">
-            <div class="container mx-auto px-4 py-3">
-                <ul class="space-y-3">
-                    <li><a href="#intro" class="block py-2 text-light/80 hover:text-accent transition-colors duration-300">引言</a></li>
-                    <li><a href="#consumer" class="block py-2 text-light/80 hover:text-secondary transition-colors duration-300">消费者视角</a></li>
-                    <li><a href="#restaurant" class="block py-2 text-light/80 hover:text-tertiary transition-colors duration-300">餐厅选择</a></li>
-                    <li><a href="#standard" class="block py-2 text-light/80 hover:text-primary transition-colors duration-300">国家标准</a></li>
-                    <li><a href="#production" class="block py-2 text-light/80 hover:text-purple transition-colors duration-300">生产真相</a></li>
-                </ul>
             </div>
         </div>
     </header>
 
-    <!-- 主视觉区域 -->
+    <!-- 主视觉区域 - 移除背景图片，简化渐变 -->
     <section class="relative h-screen flex items-center justify-center overflow-hidden">
-        <div class="absolute inset-0 z-0">
-            <img src="https://picsum.photos/id/292/1920/1080" alt="预制菜背景" class="w-full h-full object-cover opacity-20">
-            <div class="absolute inset-0 bg-gradient-to-b from-darker/90 via-darker/70 to-darker"></div>
-        </div>
+        <div class="absolute inset-0 z-0 bg-gradient-to-b from-darker via-dark/90 to-darker"></div>
         <div class="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-            <h1 class="text-4xl sm:text-5xl md:text-6xl font-serif font-bold text-white mb-6 leading-tight text-shadow-lg">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-white mb-6 leading-tight text-shadow-lg">
                 预制菜不讨喜<br>为何还有人吃？
             </h1>
-            <p class="text-xl sm:text-2xl text-light/80 max-w-3xl mx-auto mb-10">
+            <p class="text-lg sm:text-xl text-light/80 max-w-3xl mx-auto mb-10">
                 一场关于食品安全、消费习惯与产业变革的深度观察
             </p>
             
-            <!-- 替换词云图：HTML生成词云效果 -->
-            <div class="my-8 bg-dark/50 rounded-lg p-8 border border-accent/20 max-w-2xl mx-auto">
-                <div class="relative h-64 md:h-80 flex flex-wrap items-center justify-center gap-2 md:gap-4">
-                    <span class="word-cloud-item text-4xl md:text-5xl font-bold text-accent rotate-3">预制菜</span>
-                    <span class="word-cloud-item text-xl md:text-2xl text-secondary -rotate-6">食品安全</span>
-                    <span class="word-cloud-item text-lg md:text-xl text-tertiary rotate-12">便捷</span>
-                    <span class="word-cloud-item text-2xl md:text-3xl text-purple -rotate-9">消费知情权</span>
-                    <span class="word-cloud-item text-lg md:text-xl text-cyan rotate-6">标准化</span>
-                    <span class="word-cloud-item text-xl md:text-2xl text-pink -rotate-3">成本</span>
-                    <span class="word-cloud-item text-lg md:text-xl text-accent rotate-15">冷链</span>
-                    <span class="word-cloud-item text-xl md:text-2xl text-secondary rotate-6">添加剂</span>
-                    <span class="word-cloud-item text-lg md:text-xl text-tertiary -rotate-12">餐厅</span>
-                    <span class="word-cloud-item text-2xl md:text-3xl text-primary rotate-9">国家标准</span>
-                    <span class="word-cloud-item text-lg md:text-xl text-purple -rotate-6">工业化</span>
-                    <span class="word-cloud-item text-xl md:text-2xl text-cyan rotate-3">健康</span>
-                    <span class="word-cloud-item text-lg md:text-xl text-pink -rotate-9">性价比</span>
-                    <span class="word-cloud-item text-xl md:text-2xl text-accent rotate-12">信任</span>
+            <!-- 词云容器（改为浅色词云样式，视觉自适配为深色主题） -->
+            <div class="my-8 bg-dark/80 rounded-lg p-6 border border-accent/30 max-w-4xl mx-auto">
+                <div id="bullet-cloud" style="position:relative; height:280px;">
+                    <div id="bc-overlay" style="position:absolute;inset:0;pointer-events:none;"></div>
+                    <!-- 控制面板 -->
+                    <div id="bc-controls" style="position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:12px;z-index:30;">
+                        <button class="px-4 py-2 rounded-full bg-accent/20 text-accent border border-accent/40 text-sm" onclick="toggleBullets(event)">⏸ 暂停</button>
+                        <button class="px-4 py-2 rounded-full bg-accent/20 text-accent border border-accent/40 text-sm" onclick="changeSpeed(event)">⚡ 速度</button>
+                        <button class="px-4 py-2 rounded-full bg-accent/20 text-accent border border-accent/40 text-sm" onclick="changeDensity(event)">🔢 密度</button>
+                        <button class="px-4 py-2 rounded-full bg-accent/20 text-accent border border-accent/40 text-sm" onclick="clearBullets(event)">🗑 清空</button>
+                        <button class="px-4 py-2 rounded-full bg-accent/20 text-accent border border-accent/40 text-sm" onclick="fullScreen(event)">📺 全屏</button>
+                    </div>
+
+                    <!-- 情感筛选（左上） -->
+                    <div id="bc-filter" style="position:absolute;left:12px;top:12px;z-index:30;display:flex;flex-direction:column;gap:8px;">
+                        <div style="padding:8px 12px;border-radius:10px;background:rgba(0,0,0,0.45);color:#f8f5f0;">情感筛选</div>
+                        <div style="display:flex;flex-direction:column;gap:6px;background:rgba(0,0,0,0.35);padding:8px;border-radius:8px;">
+                            <button onclick="filterBullets('all', event)" class="text-sm text-light">全部</button>
+                            <button onclick="filterBullets('positive', event)" class="text-sm text-light">便利优势</button>
+                            <button onclick="filterBullets('negative', event)" class="text-sm text-light">困境挑战</button>
+                            <button onclick="filterBullets('neutral', event)" class="text-sm text-light">产业现实</button>
+                        </div>
+                    </div>
+
+                    <!-- 统计面板（右上） -->
+                    <div id="bc-stats" style="position:absolute;right:12px;top:12px;z-index:30;background:rgba(0,0,0,0.45);padding:10px;border-radius:10px;color:#f8f5f0;">
+                        <div style="font-size:12px;opacity:0.9">当前弹幕 <span id="current-count">0</span></div>
+                        <div style="font-size:12px;opacity:0.9">总发射数 <span id="total-count">0</span></div>
+                        <div style="font-size:12px;opacity:0.9">点击查看 <span id="click-count">0</span></div>
+                    </div>
                 </div>
                 <p class="text-sm text-muted mt-4">预制菜相关核心关键词云</p>
             </div>
             
-            <a href="#intro" class="inline-block animate-bounce bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 rounded-full p-3 transition-all duration-300">
-                <i class="fa fa-chevron-down"></i>
+            <!-- 简化滚动按钮 -->
+            <a href="#intro" class="inline-block bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 rounded-full p-3 transition-all duration-300">
+                    <!-- inline SVG fallback for chevron-down -->
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
             </a>
         </div>
     </section>
 
-    <!-- 主要内容 -->
-    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-20">
+    <!-- 主要内容 - 统一间距和卡片样式 -->
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <!-- 引言部分 -->
-        <section id="intro" class="section-fade mb-32">
+        <section id="intro" class="mb-24">
             <div class="max-w-4xl mx-auto">
                 <div class="flex items-center mb-8">
                     <div class="h-px bg-accent/30 flex-grow"></div>
-                    <h2 class="text-3xl font-serif font-semibold text-white px-4">引言</h2>
+                    <h2 class="text-2xl sm:text-3xl font-serif font-semibold text-white px-4">引言</h2>
                     <div class="h-px bg-accent/30 flex-grow"></div>
                 </div>
-                <div class="prose prose-invert max-w-none">
-                    <p class="text-lg text-light/90 mb-6 leading-relaxed">
-                        9月10日，罗永浩发微博吐槽西贝菜品几乎全是预制菜，价格却不便宜，预制菜又一次掀起了讨论热潮。近几年，预制菜逐渐进入大众视野，引发了不少争议。当习以为常的后厨现制与预制菜的实际使用形成鲜明反差，消费者的不满情绪瞬间被点燃，预制菜也再次被推上舆论的风口浪尖。
-                    </p>
-                    <p class="text-lg text-light/90 mb-6 leading-relaxed">
-                        在社交平台上，“抵制预制菜”“餐厅预制菜就是欺骗”的声音此起彼伏，仿佛预制菜成了餐饮行业里“见不得光”的存在。然而令人惊讶的是，无论是日常生活中还是各大数据统计都显示，预制菜市场的发展势头没有半点放缓的趋势，仍然稳定地快速增长中。
-                    </p>
-                    <div class="my-10 rounded-xl overflow-hidden border border-accent/20">
-                        <img src="19-26预制菜市场规模与预测.jpg" alt="预制菜市场规模与预测" class="w-full h-auto image-hover">
-                        <div class="p-4 bg-dark/50 text-muted text-sm text-center">
-                            预制菜市场规模持续增长，成为餐饮行业不可忽视的现象
-                        </div>
+                <div class="prose prose-invert max-w-none bg-dark/80 p-6 rounded-xl border border-accent/20 bg-gradient-warm">
+                    <div class="mb-6 p-5 bg-dark/70 rounded-lg border-l-4 border-primary">
+                        <p class="text-lg text-light/90 italic">
+                            "几乎全都是预制菜，还那么贵，实在是太恶心了。希望国家尽早推动立法，强制饭馆注明是否用了预制菜。"
+                        </p>
                     </div>
-                    
-                    <p class="text-lg text-light/90 mb-6 leading-relaxed">
-                        预制菜并非新生事物，早在几十年前就已存在于我们的生活中。从早期的罐头食品、方便面到近年来的即热米饭、半成品菜肴，预制菜的形态和种类不断丰富。据行业报告显示，2023年中国预制菜市场规模已突破5000亿元，预计到2026年将达到万亿级别。
+                    <p class="text-light/90 mb-4 leading-relaxed">
+                        这句来自某微博用户的留言，道出了当下消费者对预制菜的普遍态度。一边是社交媒体上对预制菜的口诛笔伐，另一边却是预制菜市场规模的高速增长——2023年已突破3000亿元，年增长率保持在20%以上。
                     </p>
-                    
-                    <p class="text-lg text-light/90 mb-6 leading-relaxed">
-                        这一矛盾现象背后，折射出的是现代社会生活方式的变迁、餐饮行业的转型以及消费者需求的多元化。本报告将从消费者、餐厅、国家标准和生产流程四个维度，深入剖析预制菜争议背后的真相，探讨其发展的机遇与挑战。
+                    <p class="text-light/90 leading-relaxed">
+                        这种矛盾背后，是现代生活节奏与传统饮食文化的碰撞，是食品工业发展与消费知情权的博弈，也是效率与健康之间的永恒权衡。
                     </p>
                 </div>
             </div>
         </section>
 
-        <!-- 消费者视角 -->
-        <section id="consumer" class="section-fade mb-32">
-            <div class="max-w-4xl mx-auto">
-                <div class="flex items-center mb-12">
-                    <div class="h-px bg-secondary/30 flex-grow"></div>
-                    <h2 class="text-3xl font-serif font-semibold text-white px-4">口嫌体正直的消费者</h2>
-                    <div class="h-px bg-secondary/30 flex-grow"></div>
-                </div>
-                
-                <div class="grid md:grid-cols-2 gap-10 mb-16 items-stretch">
-                    <div class="flex flex-col">
-                        <h3 class="text-2xl font-serif font-medium text-secondary mb-6">消费者的矛盾心态</h3>
-                        <p class="text-light/90 mb-6 leading-relaxed">
-                            问卷显示，消费者对预制菜的评价整体较低，约<span class="text-secondary font-bold">60%</span>的消费者对预制菜有着负面印象。这些负面评价由对食品安全的不信任、消费知情权和产品价格等多方面共同组成。
-                        </p>
-                        <p class="text-light/90 mb-6 leading-relaxed">
-                            消费者最担心的问题集中在三个方面：一是添加剂过多，担心影响健康；二是食材新鲜度无法保证；三是价格与价值不符，认为预制菜成本低但售价高。
-                        </p>
-                        <div class="bg-dark/30 p-6 rounded-lg border border-secondary/20 h-full">
-                            <h4 class="text-white font-medium mb-4 text-center">消费者对预制菜的主要担忧</h4>
-                            <img src="消费者担心问题.jpg" alt="消费者担心问题" class="w-full h-auto rounded-lg image-hover">
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-serif font-medium text-secondary mb-6">数据揭示的真实消费行为</h3>
-                        <p class="text-light/90 mb-6 leading-relaxed">
-                            尽管负面评价居多，但实际消费数据却呈现出不同的景象。调查显示，超过80%的消费者曾经购买或食用过预制菜，其中近40%的消费者每月至少购买一次。
-                        </p>
-                        <p class="text-light/90 mb-6 leading-relaxed">
-                            现代都市生活节奏加快，工作压力增大，使得人们越来越不愿意在厨房花费过多时间。预制菜的便捷性正好契合了这一需求，<span class="text-secondary font-bold">10分钟</span>就能完成一道"大菜"。
-                        </p>
-                        <div class="bg-dark/50 p-6 rounded-lg border border-secondary/10 overflow-hidden">
-                            <h4 class="text-white font-medium mb-4 text-center">不同年龄段购买预制菜占比</h4>
-                            <img src="购买原因.png" alt="不同年龄购买预制菜占比及原因" class="w-full h-auto max-h-64 object-contain rounded-lg image-hover">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-gradient-secondary rounded-xl border border-secondary/20 p-8 mb-16">
-                    <h3 class="text-2xl font-serif font-medium text-secondary mb-6">背后的社会动因</h3>
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <div>
-                            <h4 class="text-white font-medium mb-4 flex items-center">
-                                <i class="fa fa-home text-secondary mr-2"></i>家庭结构小型化
-                            </h4>
-                            <p class="text-light/90 mb-4 leading-relaxed">
-                                第七次人口普查数据显示，2020年我国户均人口<span class="text-secondary font-bold">2.62</span>，较上一次普查减少0.48人，已不再是传统的“一家三口”。其中，“一人户”家庭超过<span class="text-secondary font-bold">1.25亿户</span>。
-                            </p>
-                            <p class="text-light/90 leading-relaxed">
-                                随着家庭越来越小，做饭的单位成本也随着人数的减少而提高。小型家庭对烹饪简易化的需求提升，会更倾向点外卖、选购预制菜。
-                            </p>
-                            <div class="mt-6 rounded-lg overflow-hidden border border-secondary/20">
-                                <img src="普查平均家庭规模.jpg" alt="普查平均家庭规模变化" class="w-full h-auto image-hover">
-                            </div>
-                        </div>
-                        <div>
-                            <h4 class="text-white font-medium mb-4 flex items-center">
-                                <i class="fa fa-clock-o text-secondary mr-2"></i>时间成本上升
-                            </h4>
-                            <p class="text-light/90 mb-6 leading-relaxed">
-                                一线城市白领平均通勤时间超过45分钟，加上每日8-10小时的工作时长，留给家务和烹饪的时间所剩无几。预制菜的出现，正是对这种时间荒的直接回应。
-                            </p>
-                            <p class="text-light/90 mb-6 leading-relaxed">
-                                特别是在工作日的晚餐场景中，预制菜的便捷性优势尤为明显。数据显示，工作日晚餐是预制菜消费的高峰时段，占全天消费的53%。
-                            </p>
-                            <div class="bg-dark/50 p-6 rounded-lg border border-secondary/20">
-                                <h4 class="text-white font-medium mb-4 text-center">消费者对预制菜的评价</h4>
-                                <div class="h-64 flex items-center justify-center">
-                                    <canvas id="attitudeChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="text-center">
-                  <p class="text-light/90 max-w-2xl mx-auto leading-relaxed">
-                      数据显示，尽管争议不断，但<span class="text-secondary font-bold">80%以上</span>的消费者都有购买和食用预制菜的经历，反映了市场的真实需求
-                    </p>
-                </div>
-                
-                <div class="mt-12 bg-dark/30 p-8 rounded-xl border border-secondary/20">
-                    <h3 class="text-xl font-serif font-medium text-secondary mb-6">消费者信任度分析</h3>
-                    <p class="text-light/90 mb-6 leading-relaxed">
-                        研究发现，消费者对预制菜的信任度与其健康评分和食用频率呈正相关。知名品牌和有明确 原料 标识的产品更容易获得消费者信任。
-                    </p>
-                    <div class="rounded-lg overflow-hidden border border-secondary/20">
-                        <img src="气泡图_信任度-健康评分-食用频率.png" alt="信任度-健康评分-食用频率关系图" class="w-full h-auto image-hover">
-                    </div>
-                </div>
-            </div>
-        </section>
+        
 
-        <!-- 餐厅选择 -->
-        <section id="restaurant" class="section-fade mb-32">
-            <div class="max-w-4xl mx-auto">
-                <div class="flex items-center mb-12">
+        <!-- 消费态度部分 -->
+        <section id="attitude" class="mb-24">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center mb-8">
                     <div class="h-px bg-tertiary/30 flex-grow"></div>
-                    <h2 class="text-3xl font-serif font-semibold text-white px-4">餐厅的现实选择</h2>
+                    <h2 class="text-2xl sm:text-3xl font-serif font-semibold text-white px-4">消费态度的分裂</h2>
                     <div class="h-px bg-tertiary/30 flex-grow"></div>
                 </div>
                 
-                <div class="grid md:grid-cols-2 gap-10 mb-16">
-                    <div>
-                        <h3 class="text-2xl font-serif font-medium text-tertiary mb-6">从后厨到中央厨房</h3>
-                        <p class="text-light/90 mb-6 leading-relaxed">
-                            当消费者还在争论预制菜的好坏时，餐饮行业早已悄然完成了一场厨房革命。从连锁品牌到地方餐馆，预制菜的使用已成为普遍现象，只是程度不同而已。
-                        </p>
-                        <p class="text-light/90 mb-6 leading-relaxed">
-                            西贝、海底捞、眉州东坡等知名连锁品牌都在不同程度上使用预制菜或半成品。一位不愿具名的连锁餐厅厨房负责人透露，他们餐厅<span class="text-tertiary font-bold">60%以上</span>的菜品都使用预制或半预制食材。
-                        </p>
-                        <div class="rounded-lg overflow-hidden border border-tertiary/20 mb-4">
-                            <img src="西贝隐藏预制菜.jpg" alt="西贝餐厅使用预制菜" class="w-full h-auto image-hover">
-                        </div>
-                        <p class="text-muted text-sm">
-                            厨房负责人承认部分菜品为提前加工的半成品，通过冷链配送至门店
-                        </p>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-serif font-medium text-tertiary mb-6">透明化的尝试</h3>
-                        <p class="text-light/90 mb-6 leading-relaxed">
-                            在预制菜使用成为行业常态的背景下，部分品牌开始尝试透明化策略，主动向消费者说明哪些菜品使用了预制或半预制食材。
-                        </p>
-                        <div class="bg-dark/30 p-6 rounded-lg border border-tertiary/20">
-                            <h4 class="text-white font-medium mb-4">老乡鸡：明牌策略</h4>
-                            <p class="text-light/90 mb-4 leading-relaxed">
-                                老乡鸡公开宣称部分菜品使用预制菜，并在菜单上明确标注加工等级划分，让消费者自由选择。这种透明化策略赢得了部分理性消费者的认可。
+                <div class="grid md:grid-cols-2 gap-8 mb-12">
+                    <div class="bg-dark/80 p-6 rounded-xl border border-tertiary/20 bg-gradient-yellow card-hover">
+                        <h3 class="text-xl sm:text-2xl font-serif font-medium text-tertiary mb-4 flex items-center">
+                            <i class="fa fa-exclamation-circle mr-3"></i>消费者的负面印象
+                        </h3>
+                        <div class="mb-4">
+                            <p class="text-light/90 mb-3 leading-relaxed">
+                                调查显示，约六成消费者对预制菜持负面印象，核心担忧集中在两大方面：
                             </p>
-                            <div class="rounded-lg overflow-hidden mb-4 border border-tertiary/20"></div>
-                            <div class="rounded-lg overflow-hidden border border-tertiary/20">
-                                <img src="老乡鸡菜品加工等级划分说明.jpg" alt="老乡鸡菜品加工等级划分" class="w-full h-auto image-hover">
-                            </div>
-                            <p class="text-muted text-sm mt-2">
-                                明确标注餐厅现做、半预制、复热预制等不同加工方式
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-gradient-tertiary rounded-xl border border-tertiary/20 p-8 mb-16">
-                    <h3 class="text-2xl font-serif font-medium text-tertiary mb-6">餐厅选择预制菜的核心原因</h3>
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <div>
-                            <h4 class="text-white font-medium mb-4 flex items-center">
-                                <i class="fa fa-calculator text-tertiary mr-2"></i>成本控制
-                            </h4>
-                            <p class="text-light/90 mb-6 leading-relaxed">
-                                虽然预制菜的食材成本略高，但能大幅降低人工和租房成本。以20元的外卖餐品为例，人工成本直接减半，最终利润率上升超<span class="text-tertiary font-bold">40%</span>。
-                            </p>
-                            <div class="overflow-x-auto rounded-lg border border-tertiary/20">
-                                <img src="预制菜成本表.jpg" alt="预制菜与现做菜成本对比" class="w-full h-auto rounded-lg image-hover">
-                            </div>
-                        </div>
-                        <div>
-                            <h4 class="text-white font-medium mb-4 flex items-center">
-                                <i class="fa fa-balance-scale text-tertiary mr-2"></i>品质稳定
-                            </h4>
-                            <p class="text-light/90 mb-6 leading-relaxed">
-                                预制菜通过标准化生产流程，能够保证菜品口味和质量的一致性，避免因厨师技术差异导致的品质波动。这对于连锁品牌维持统一形象至关重要。
-                            </p>
-                            <h4 class="text-white font-medium mb-4 flex items-center">
-                                <i class="fa fa-clock-o text-tertiary mr-2"></i>出餐效率
-                            </h4>
-                            <p class="text-light/90 leading-relaxed">
-                                在餐饮高峰期，预制菜能显著提高出餐速度，减少顾客等待时间。数据显示，使用预制菜的餐厅高峰期出餐效率可提升3倍以上，大大改善了顾客体验。
-                            </p>
+                            <ul class="space-y-2 text-light/80 text-sm sm:text-base">
+                                <li class="flex items-start">
+                                    <i class="fa fa-times-circle text-primary mt-1 mr-3"></i>
+                                    <span><strong class="text-tertiary">73.08%</strong> 担心防腐剂/添加剂问题</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fa fa-times-circle text-primary mt-1 mr-3"></i>
+                                    <span><strong class="text-tertiary">67.31%</strong> 关注食材不新鲜</span>
+                                </li>
+                                
+                                <div class="bg-dark/80 p-6 rounded-xl border border-tertiary/20 bg-gradient-yellow card-hover">
+                                    <h3 class="text-xl sm:text-2xl font-serif font-medium text-tertiary mb-4 flex items-center">
+                                        <i class="fa fa-shopping-cart mr-3"></i>身体很诚实的消费行为
+                                    </h3>
+                                    <div class="mb-4">
+                                        <p class="text-light/90 mb-3 leading-relaxed">
+                                            尽管负面评价居多，但消费数据却呈现另一番景象：
+                                        </p>
+                                        <ul class="space-y-2 text-light/80 text-sm sm:text-base">
+                                            <li class="flex items-start">
+                                                <i class="fa fa-check-circle text-secondary mt-1 mr-3"></i>
+                                                <span><strong class="text-tertiary">37.04%</strong> 的用户几乎每天食用预制菜</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fa fa-check-circle text-secondary mt-1 mr-3"></i>
+                                                <span><strong class="text-tertiary">68.52%</strong> 承认预制菜确实节省时间</span>
+                                            </li>
+                                            <li class="flex items-start">
+                                                <i class="fa fa-check-circle text-secondary mt-1 mr-3"></i>
+                                                <span><strong class="text-tertiary">42.16%</strong> 会在忙碌时优先选择预制菜</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </ul>
                         </div>
                     </div>
-                </div>
-                
-                <div class="bg-dark/30 p-8 rounded-xl border border-tertiary/20">
-                    <h3 class="text-xl font-serif font-medium text-tertiary mb-6">消费者对餐厅使用预制菜的态度</h3>
-                    <div class="grid md:grid-cols-3 gap-6">
-                        <div class="bg-dark/50 p-6 rounded-lg border border-tertiary/10 text-center">
-                            <div class="text-tertiary text-4xl mb-4">
-                                <i class="fa fa-check-circle"></i>
-                            </div>
-                            <h4 class="text-white font-medium mb-2">支持透明使用</h4>
-                            <p class="text-light/80 text-sm">
-                                35%的消费者表示，只要明确告知，接受餐厅使用预制菜
-                            </p>
-                        </div>
-                        <div class="bg-dark/50 p-6 rounded-lg border border-tertiary/10 text-center">
-                            <div class="text-tertiary text-4xl mb-4">
-                                <i class="fa fa-exclamation-circle"></i>
-                            </div>
-                            <h4 class="text-white font-medium mb-2">价格敏感</h4>
-                            <p class="text-light/80 text-sm">
-                                62%的消费者认为使用预制菜的菜品应降价20%以上
-                            </p>
-                        </div>
-                        <div class="bg-dark/50 p-6 rounded-lg border border-tertiary/10 text-center">
-                            <div class="text-tertiary text-4xl mb-4">
-                                <i class="fa fa-ban"></i>
-                            </div>
-                            <h4 class="text-white font-medium mb-2">坚决反对</h4>
-                            <p class="text-light/80 text-sm">
-                                18%的消费者完全不能接受餐厅使用预制菜
-                            </p>
+                    <div class="flex items-center justify-center bg-dark/70 p-6 rounded-xl border border-tertiary/20">
+                        <div class="text-center w-full">
+                            <div class="text-sm text-light/80 mb-3">消费者综合评分</div>
+                            <img src="气泡图_信任度-健康评分-食用频率.png" alt="气泡图：信任度-健康评分-食用频率" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:8px;" />
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 国家标准 -->
-        <section id="standard" class="section-fade mb-32">
-            <div class="max-w-4xl mx-auto">
-                <div class="flex items-center mb-12">
+        <!-- 餐厅选择部分 -->
+        <section id="restaurant" class="mb-24">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center mb-8">
+                    <div class="h-px bg-secondary/30 flex-grow"></div>
+                    <h2 class="text-2xl sm:text-3xl font-serif font-semibold text-white px-4">餐厅的预制菜使用</h2>
+                    <div class="h-px bg-secondary/30 flex-grow"></div>
+                </div>
+                
+                <div class="bg-dark/80 p-6 rounded-xl border border-secondary/20 mb-8">
+                    <h3 class="text-xl sm:text-2xl font-serif font-medium text-secondary mb-6">成本对比：预制菜vs现做</h3>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-light/90">
+                            <thead>
+                                <tr class="border-b border-muted/30">
+                                    <td class="py-2 font-medium">成本类型</td>
+                                    <td class="text-center py-2 font-medium">预制菜方案</td>
+                                    <td class="text-center py-2 font-medium">传统现做方案</td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-muted/20">
+                                    <td class="py-1">食材成本</td>
+                                    <td class="text-center py-1">6.6</td>
+                                    <td class="text-center py-1">7.2</td>
+                                </tr>
+                                <tr class="border-b border-muted/20">
+                                    <td class="py-1">人工成本</td>
+                                    <td class="text-center py-1">5.8</td>
+                                    <td class="text-center py-1">2.5</td>
+                                </tr>
+                                <tr class="border-b border-muted/20">
+                                    <td class="py-1">房租水电</td>
+                                    <td class="text-center py-1">4.2</td>
+                                    <td class="text-center py-1">3.8</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1">平台抽成</td>
+                                    <td class="text-center py-1">3.4</td>
+                                    <td class="text-center py-1">3.4</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="bg-dark/70 p-5 rounded-lg border border-secondary/30 card-hover">
+                        <div class="text-secondary text-2xl mb-3 text-center">
+                            <i class="fa fa-cutlery"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-white mb-2 text-center">连锁餐饮</h4>
+                        <p class="text-light/80 text-center text-sm">
+                            超过80%的连锁餐厅使用预制菜，中央厨房统一加工配送，确保口味一致并降低成本。
+                        </p>
+                    </div>
+                    <div class="bg-dark/70 p-5 rounded-lg border border-secondary/30 card-hover">
+                        <div class="text-secondary text-2xl mb-3 text-center">
+                            <i class="fa fa-home"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-white mb-2 text-center">小型餐馆</h4>
+                        <p class="text-light/80 text-center text-sm">
+                            约45%的中小型餐馆使用预制菜，主要集中在特色菜和汤品，减少厨师依赖。
+                        </p>
+                    </div>
+                    <div class="bg-dark/70 p-5 rounded-lg border border-secondary/30 card-hover">
+                        <div class="text-secondary text-2xl mb-3 text-center">
+                            <i class="fa fa-coffee"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-white mb-2 text-center">快餐咖啡</h4>
+                        <p class="text-light/80 text-center text-sm">
+                            90%以上的快餐和咖啡品牌使用预制半成品，标准化程度最高，出餐速度最快。
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="mt-8 bg-dark/70 p-6 rounded-lg border border-accent/30">
+                    <h4 class="text-lg sm:text-xl font-medium text-white mb-4">餐厅的矛盾：隐瞒还是透明？</h4>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h5 class="text-accent font-medium mb-2 flex items-center">
+                                <i class="fa fa-eye-slash mr-2"></i> 西贝式隐瞒
+                            </h5>
+                            <p class="text-light/90 mb-3 leading-relaxed text-sm sm:text-base">
+                                西贝、海底捞等品牌对预制菜使用情况讳莫如深，核心顾虑在于消费者认知偏差——"现做现炒"等同于新鲜优质，预制菜则被贴"不健康"标签。
+                            </p>
+                            <p class="text-light/90 leading-relaxed text-sm sm:text-base">
+                                2025年9月前缺乏"餐饮门店需明示预制菜使用"的强制规定，也为餐厅"隐瞒使用"提供了空间。
+                            </p>
+
+                            <h5 class="text-accent font-medium mt-4 mb-2 flex items-center">
+                                <i class="fa fa-eye mr-2"></i> 老乡鸡式透明
+                            </h5>
+                            <p class="text-light/90 mb-3 leading-relaxed text-sm sm:text-base">
+                                老乡鸡等少数品牌选择主动标注预制菜，甚至以此为营销点，强调中央厨房的标准化和安全性，吸引注重效率的消费者。
+                            </p>
+                            <p class="text-light/90 leading-relaxed text-sm sm:text-base">
+                                这种透明化策略在年轻消费群体中反响积极，25-35岁用户接受度达63%。
+                            </p>
+                        </div>
+                        <div class="flex items-start justify-start">
+                            <div class="w-full flex flex-col items-start">
+                                <div class="text-sm text-light/80 mb-3 text-left">老乡鸡预制菜等级划分图</div>
+                                <img src="老乡鸡菜品加工等级划分说明.jpg" alt="老乡鸡菜品加工等级划分说明" class="mx-0" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:8px;" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 国家政策部分 -->
+        <section id="standard" class="mb-24">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center mb-8">
                     <div class="h-px bg-primary/30 flex-grow"></div>
-                    <h2 class="text-3xl font-serif font-semibold text-white px-4">国家标准的边界</h2>
+                    <h2 class="text-2xl sm:text-3xl font-serif font-semibold text-white px-4">标准与规范</h2>
                     <div class="h-px bg-primary/30 flex-grow"></div>
                 </div>
                 
-                <div class="mb-16">
-                    <div class="bg-gradient-accent rounded-xl border border-primary/20 p-8 mb-12">
-                        <h3 class="text-2xl font-serif font-medium text-primary mb-6">预制菜的官方定义</h3>
-                        <p class="text-light/90 mb-8 leading-relaxed">
-                            <span class="text-primary font-bold">2024年3月</span>，国家市场监管总局等六部门联合发布《关于加强预制菜食品安全监管 促进产业高质量发展的通知》，首次从国家层面为预制菜"正名"并划定了底线。
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-dark/80 p-6 rounded-xl border border-primary/20">
+                        <h3 class="text-xl sm:text-2xl font-serif font-medium text-primary mb-4">2024年预制菜新国标</h3>
+                        <p class="text-light/90 mb-4 leading-relaxed text-sm sm:text-base">
+                            随着预制菜产业快速发展，国家市场监督管理总局于2024年3月发布新版《预制菜生产经营卫生规范》，首次对预制菜的定义、分类、生产、包装等作出明确规定。
                         </p>
                         
-                        <div class="grid md:grid-cols-3 gap-6 mb-10">
-                            <div class="bg-dark/50 p-6 rounded-lg border border-primary/20 transform hover:scale-105 transition-transform duration-300">
-                                <div class="text-primary text-3xl mb-4 text-center">
-                                    <i class="fa fa-ban"></i>
+                        <!-- 折叠卡片：引入折叠卡片样式内容，已适配页面深色主题 -->
+                        <div class="space-y-4">
+                            <details class="bg-dark/70 rounded-xl border border-primary/20" open>
+                                <summary class="flex justify-between items-center p-4 cursor-pointer text-white">
+                                    <span class="font-medium text-warmYellow"><i class="fa fa-file-contract mr-2"></i> 2024年预制菜新国标</span>
+                                    <i class="fa fa-chevron-down"></i>
+                                </summary>
+                                <div class="p-4 text-light/90 text-sm bg-dark/80 border-t border-primary/10">
+                                    <div class="mb-2">国家市场监督管理总局于2024年3月发布新版《预制菜生产经营卫生规范》，首次对预制菜的定义、分类、生产、包装等作出明确规定。</div>
+                                    <ul class="list-disc pl-5 space-y-2 text-light/80">
+                                        <li>明确定义与分类，划定监管边界与产品范畴。</li>
+                                        <li>标签要求：标注原料、工艺、保质期与使用说明。</li>
+                                        <li>加强冷链、企业主体责任和抽检监管。</li>
+                                    </ul>
                                 </div>
-                                <h4 class="text-white font-medium mb-3 text-center">不添加防腐剂</h4>
-                                <p class="text-light/80 text-sm text-center">
-                                    国标明确规定预制菜不得添加防腐剂，主要依靠冷链技术保鲜
-                                </p>
-                            </div>
-                            <div class="bg-dark/50 p-6 rounded-lg border border-primary/20 transform hover:scale-105 transition-transform duration-300">
-                                <div class="text-primary text-3xl mb-4 text-center">
-                                    <i class="fa fa-industry"></i>
+                            </details>
+
+                            <details class="bg-dark/70 rounded-xl border border-primary/20">
+                                <summary class="flex justify-between items-center p-4 cursor-pointer text-white">
+                                    <span class="font-medium text-accent"><i class="fa fa-ban mr-2"></i> 不添加防腐剂</span>
+                                    <i class="fa fa-chevron-down"></i>
+                                </summary>
+                                <div class="p-4 text-light/90 text-sm bg-dark/80 border-t border-primary/10">
+                                    <p class="mb-2">国务院明确要求预制菜不得添加防腐剂，依靠规范化工艺与全程冷链保障食品安全。</p>
+                                    <ul class="list-disc pl-5 space-y-2 text-light/80">
+                                        <li>全程冷链温控，降低微生物风险。</li>
+                                        <li>强化质量控制与监管抽检机制。</li>
+                                    </ul>
                                 </div>
-                                <h4 class="text-white font-medium mb-3 text-center">工业化预加工</h4>
-                                <p class="text-light/80 text-sm text-center">
-                                    采用标准化的工业生产流程，保证产品质量和口味的一致性
-                                </p>
-                            </div>
-                            <div class="bg-dark/50 p-6 rounded-lg border border-primary/20 transform hover:scale-105 transition-transform duration-300">
-                                <div class="text-primary text-3xl mb-4 text-center">
-                                    <i class="fa fa-fire"></i>
+                            </details>
+
+                            <details class="bg-dark/70 rounded-xl border border-primary/20">
+                                <summary class="flex justify-between items-center p-4 cursor-pointer text-white">
+                                    <span class="font-medium text-secondary"><i class="fa fa-industry mr-2"></i> 工业化预加工</span>
+                                    <i class="fa fa-chevron-down"></i>
+                                </summary>
+                                <div class="p-4 text-light/90 text-sm bg-dark/80 border-t border-primary/10">
+                                    <p class="mb-2">工业化与标准化生产提高了一致性与效率，但同时需要完善追溯与质量管理体系。</p>
+                                    <ul class="list-disc pl-5 space-y-2 text-light/80">
+                                        <li>统一生产标准与批次管理。</li>
+                                        <li>完善可追溯信息与企业责任。</li>
+                                    </ul>
                                 </div>
-                                <h4 class="text-white font-medium mb-3 text-center">需加热后食用</h4>
-                                <p class="text-light/80 text-sm text-center">
-                                    产品需经过加热或熟制后方可食用，区别于即食食品
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div class="my-8 rounded-lg overflow-hidden border border-primary/20">
-                            <img src="配制菜国标核心三.png" alt="预制菜国标核心要点" class="w-full h-auto image-hover">
-                        </div>
-                        
-                        <h4 class="text-white font-medium mb-6">预制菜四大分类</h4>
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div class="bg-dark/50 p-5 rounded-lg border border-primary/20 flex items-start">
-                                <div class="text-primary text-xl mr-4 mt-1">
-                                    <i class="fa fa-cutlery"></i>
+                            </details>
+
+                            <details class="bg-dark/70 rounded-xl border border-primary/20">
+                                <summary class="flex justify-between items-center p-4 cursor-pointer text-white">
+                                    <span class="font-medium text-warmOrange"><i class="fa fa-fire mr-2"></i> 加热后食用</span>
+                                    <i class="fa fa-chevron-down"></i>
+                                </summary>
+                                <div class="p-4 text-light/90 text-sm bg-dark/80 border-t border-primary/10">
+                                    <p class="mb-2">强调产品加热说明，提示消费者按照标注要求加热以确保中心温度安全。</p>
+                                    <ul class="list-disc pl-5 space-y-2 text-light/80">
+                                        <li>明确加热时间与温度要求。</li>
+                                        <li>强调中心温度达标的重要性。</li>
+                                    </ul>
                                 </div>
-                                <div>
-                                    <h5 class="text-white font-medium mb-2">即食类</h5>
-                                    <p class="text-light/80 text-sm">
-                                        开封即食，如沙拉、酱卤肉制品等，无需额外加工
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="bg-dark/50 p-5 rounded-lg border border-primary/20 flex items-start">
-                                <div class="text-primary text-xl mr-4 mt-1">
-                                    <i class="fa fa-microphone"></i>
-                                </div>
-                                <div>
-                                    <h5 class="text-white font-medium mb-2">即热类</h5>
-                                    <p class="text-light/80 text-sm">
-                                        加热即可食用，如宫保鸡丁、鱼香肉丝等
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="bg-dark/50 p-5 rounded-lg border border-primary/20 flex items-start">
-                                <div class="text-primary text-xl mr-4 mt-1">
-                                    <i class="fa fa-asterisk"></i>
-                                </div>
-                                <div>
-                                    <h5 class="text-white font-medium mb-2">即烹类</h5>
-                                    <p class="text-light/80 text-sm">
-                                        需烹饪后食用，如腌制好的牛排、鱼排等
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="bg-dark/50 p-5 rounded-lg border border-primary/20 flex items-start">
-                                <div class="text-primary text-xl mr-4 mt-1">
-                                    <i class="fa fa-lemon-o"></i>
-                                </div>
-                                <div>
-                                    <h5 class="text-white font-medium mb-2">即配类</h5>
-                                    <p class="text-light/80 text-sm">
-                                        经过清洗切配的生鲜净菜，需自行调味烹饪
-                                    </p>
-                                </div>
-                            </div>
+                            </details>
                         </div>
                     </div>
                     
-                    <div class="bg-dark/30 p-8 rounded-xl border border-primary/20">
-                        <h3 class="text-2xl font-serif font-medium text-primary mb-6">国标与现实的三大鸿沟</h3>
+                    <div>
+                        <div class="bg-dark/70 p-5 rounded-lg border border-primary/30 card-hover mb-6">
+                            <div class="text-primary text-2xl mb-3 text-center">
+                                <i class="fa fa-line-chart"></i>
+                            </div>
+                            <h4 class="text-lg font-medium text-white mb-2 text-center">监管的困境</h4>
+                            <p class="text-light/80 text-center text-sm">
+                                尽管新规出台，但监管仍面临挑战。小作坊式生产占比达35%，农村市场抽检合格率仅为68.3%，远低于城市的89.7%。
+                            </p>
+                        </div>
                         
-                        <div class="flex flex-col md:flex-row items-start gap-6 mb-8">
-                            <div class="md:w-1/4">
-                                <div class="bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto md:mx-0">
-                                    <i class="fa fa-info-circle text-primary text-2xl"></i>
+                        <div class="grid grid-cols-2 gap-6">
+                            <div class="bg-dark/70 p-4 rounded-lg border border-primary/30 card-hover">
+                                <div class="text-primary text-2xl mb-3 text-center">
+                                    <i class="fa fa-heartbeat"></i>
                                 </div>
-                                <h4 class="text-white font-medium text-center md:text-left">知情的沟壑</h4>
+                                <h4 class="text-lg font-medium text-white mb-2 text-center">健康的沟壑</h4>
+                                <p class="text-light/80 text-center text-sm">
+                                    虽然国标禁止使用防腐剂，但高盐、高油仍是普遍现象。检测显示，预制菜平均钠含量是家庭烹饪的3-5倍，健康隐患客观存在。
+                                </p>
                             </div>
-                            <div class="md:w-3/4">
-                                <p class="text-light/90 leading-relaxed">
-                                    国标鼓励餐饮企业明示预制菜使用情况，但未作强制要求。这直接导致了消费端强烈的"知情权焦虑"——调查显示，超过<span class="text-primary font-bold">90%</span>的受访者强烈要求餐厅明确标识是否为预制菜。当消费者无从知晓自己吃的是什么时，不信任感便会滋生。
+                            <div class="bg-dark/70 p-4 rounded-lg border border-primary/30 card-hover">
+                                <div class="text-primary text-2xl mb-3 text-center">
+                                    <i class="fa fa-balance-scale"></i>
+                                </div>
+                                <h4 class="text-lg font-medium text-white mb-2 text-center">执行的沟壑</h4>
+                                <p class="text-light/80 text-center text-sm">
+                                    中小生产企业占比超过70%，监管难度大。2024年二季度抽检显示，仍有31.7%的预制菜产品不符合标准要求。
                                 </p>
                             </div>
                         </div>
-                        <div class="w-full h-px bg-primary/10 my-4"></div>
-                        <div class="flex flex-col md:flex-row items-start gap-6 mb-8">
-                            <div class="md:w-1/4">
-                                <div class="bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto md:mx-0">
-                                    <i class="fa fa-heartbeat text-primary text-2xl"></i>
-                                </div>
-                                <h4 class="text-white font-medium text-center md:text-left">健康的迷思</h4>
-                            </div>
-                            <div class="md:w-3/4">
-                                <p class="text-light/90 leading-relaxed">
-                                    尽管国标禁止添加防腐剂，但消费者对预制菜的健康疑虑并未消除。一方面，部分企业为延长保质期，可能使用更复杂的食品添加剂组合；另一方面，反复解冻加热过程中可能产生的营养流失和有害物质，也成为消费者担忧的焦点。
-                                </p>
-                            </div>
-                        </div>
-                        <div class="w-full h-px bg-primary/10 my-4"></div>
-                        <div class="flex flex-col md:flex-row items-start gap-6">
-                            <div class="md:w-1/4">
-                                <div class="bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto md:mx-0">
-                                    <i class="fa fa-balance-scale text-primary text-2xl"></i>
-                                </div>
-                                <h4 class="text-white font-medium text-center md:text-left">监管的挑战</h4>
-                            </div>
-                            <div class="md:w-3/4">
-                                <p class="text-light/90 leading-relaxed">
-                                    预制菜产业链长、环节多，从原料采购到生产加工，再到冷链运输和终端销售，每个环节都可能存在质量安全风险。目前监管体系仍不完善，跨区域监管协调难度大，导致部分小企业存在侥幸心理，影响了整个行业的信誉。
-                                </p>
-                            </div>
+                        <!-- 国标与消费者认知差异图（尺寸受限以保证布局美观） -->
+                        <div class="mt-6 flex justify-center">
+                            <img src="国标与消费者认知差异图.jpg" alt="国标与消费者认知差异图" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:8px;" />
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 生产真相 -->
-        <section id="production" class="section-fade mb-20">
-            <div class="max-w-4xl mx-auto">
-                <div class="flex items-center mb-12">
-                    <div class="h-px bg-purple/30 flex-grow"></div>
-                    <h2 class="text-3xl font-serif font-semibold text-white px-4">生产线上的真相</h2>
-                    <div class="h-px bg-purple/30 flex-grow"></div>
+        <!-- 生产真相部分 -->
+        <section id="production" class="mb-24">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center mb-8">
+                    <div class="h-px bg-warmOrange/30 flex-grow"></div>
+                    <h2 class="text-2xl sm:text-3xl font-serif font-semibold text-white px-4">生产线上的真相</h2>
+                    <div class="h-px bg-warmOrange/30 flex-grow"></div>
                 </div>
                 
-                <div class="mb-16">
-                    <div class="grid md:grid-cols-2 gap-10 items-center">
+                <div class="bg-dark/80 p-6 rounded-xl border border-warmOrange/20 mb-10">
+                    <h3 class="text-xl sm:text-2xl font-serif font-medium text-warmOrange mb-4">华中预制菜之都：荆州样本</h3>
+                    <div class="grid md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <h3 class="text-2xl font-serif font-medium text-purple mb-6">华中预制菜之都：荆州</h3>
-                            <p class="text-light/90 mb-6 leading-relaxed">
+                            <p class="text-light/90 mb-4 leading-relaxed text-sm sm:text-base">
                                 要看清市面上预制菜的真实面貌，不妨将目光投向湖北荆州——这座主动将自身与预制菜绑定的城市，如今高调打出"华中预制菜之都"的旗号，它的转型之路，恰是中国预制菜产业发展的一个缩影。
                             </p>
-                            <div class="bg-dark/50 p-6 rounded-lg border border-purple/10 mb-6">
-                                <h4 class="text-white font-medium mb-4">产业生长的三大逻辑</h4>
-                                <ul class="space-y-4">
-                                    <li class="flex items-start">
-                                        <div class="bg-purple/20 p-2 rounded-full mr-4 mt-1">
-                                            <i class="fa fa-sun-o text-purple"></i>
-                                        </div>
-                                        <div>
-                                            <h5 class="text-white font-medium mb-1">天时</h5>
-                                            <p class="text-light/80 text-sm">
-                                                便捷需求爆发与政策东风，一人户家庭超1.25亿户
-                                            </p>
-                                        </div>
-                                    </li>
-                                    <li class="flex items-start">
-                                        <div class="bg-purple/20 p-2 rounded-full mr-4 mt-1">
-                                            <i class="fa fa-map-marker text-purple"></i>
-                                        </div>
-                                        <div>
-                                            <h5 class="text-white font-medium mb-1">地利</h5>
-                                            <p class="text-light/80 text-sm">
-                                                江汉平原鱼米之乡，提供稳定优质的原料源头
-                                            </p>
-                                        </div>
-                                    </li>
-                                    <li class="flex items-start">
-                                        <div class="bg-purple/20 p-2 rounded-full mr-4 mt-1">
-                                            <i class="fa fa-users text-purple"></i>
-                                        </div>
-                                        <div>
-                                            <h5 class="text-white font-medium mb-1">人和</h5>
-                                            <p class="text-light/80 text-sm">
-                                                传统农业转型需求与就业压力推动产业升级
-                                            </p>
-                                        </div>
-                                    </li>
-                                </ul>
+                            <div class="bg-dark/70 p-4 rounded-lg border border-warmOrange/30 mb-4 text-sm">
+                                <p class="text-light/90 italic">
+                                    "从淡水养殖到预制菜加工，荆州用工业化思维重塑了传统农业。一条鱼从捕捞到加工成鱼糕、鱼丸等预制菜产品，产业链条延长了3倍，附加值提升了5-8倍。"
+                                </p>
+                                <p class="text-warmOrange/90 mt-2 text-right">——荆州预制菜产业协会会长</p>
                             </div>
                         </div>
-                        <div class="space-y-6">
-                            <div class="rounded-xl overflow-hidden border border-purple/20">
-                                <img src="荆州预制菜销售渠道占比.jpg" alt="荆州预制菜销售渠道分布" class="w-full h-auto image-hover">
-                            </div>
-                            <div class="rounded-xl overflow-hidden border border-purple/20">
-                                <img src="国标与消费者认知差异图.jpg" alt="产业现实与消费者认知差距" class="w-full h-auto image-hover">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-dark/30 p-8 rounded-xl border border-purple/20 mb-16">
-                    <h3 class="text-2xl font-serif font-medium text-purple mb-8">标准化生产流程</h3>
-                    <div class="relative">
-                        <!-- 流程线 -->
-                        <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-purple/30 hidden md:block"></div>
-                        
-                        <div class="space-y-12 relative">
-                            <div class="flex flex-col md:flex-row items-start">
-                                <div class="md:w-1/12 flex justify-center mb-4 md:mb-0">
-                                    <div class="bg-purple/20 w-8 h-8 rounded-full flex items-center justify-center z-10">
-                                        <span class="text-purple font-medium">1</span>
-                                    </div>
-                                </div>
-                                <div class="md:w-11/12 md:pl-8">
-                                    <h4 class="text-white font-medium mb-3">原料采购与检验</h4>
-                                    <p class="text-light/90 leading-relaxed">
-                                        大宗原料统一采购，经过严格的质量检测，确保食材新鲜安全，检测报告随原料一同入库。标准化企业会对每批次原料进行农残、重金属等指标检测。
-                                    </p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-dark/70 p-4 rounded-lg border border-warmOrange/30 flex items-center justify-center">
+                                <div class="text-center">
+                                    <i class="fa fa-fish text-5xl text-warmOrange/50 mb-3"></i>
+                                    <h4 class="text-light font-medium mb-2">淡水产品</h4>
+                                    <p class="text-light/80 text-xs">占全国预制菜市场份额12%</p>
                                 </div>
                             </div>
-                            
-                            <div class="flex flex-col md:flex-row items-start">
-                                <div class="md:w-1/12 flex justify-center mb-4 md:mb-0">
-                                    <div class="bg-purple/20 w-8 h-8 rounded-full flex items-center justify-center z-10">
-                                        <span class="text-purple font-medium">2</span>
-                                    </div>
-                                </div>
-                                <div class="md:w-11/12 md:pl-8">
-                                    <h4 class="text-white font-medium mb-3">自动化处理</h4>
-                                    <p class="text-light/90 leading-relaxed">
-                                        通过自动化设备进行清洗、切割、分拣等预处理，减少人工接触，提高效率和卫生标准。大型企业的生产线每小时可处理数吨原料。
-                                    </p>
+                            <div class="bg-dark/70 p-4 rounded-lg border border-warmOrange/30 flex items-center justify-center">
+                                <div class="text-center">
+                                    <i class="fa fa-leaf text-5xl text-warmOrange/50 mb-3"></i>
+                                    <h4 class="text-light font-medium mb-2">蔬菜制品</h4>
+                                    <p class="text-light/80 text-xs">年产能突破80万吨</p>
                                 </div>
                             </div>
-                            
-                            <div class="flex flex-col md:flex-row items-start">
-                                <div class="md:w-1/12 flex justify-center mb-4 md:mb-0">
-                                    <div class="bg-purple/20 w-8 h-8 rounded-full flex items-center justify-center z-10">
-                                        <span class="text-purple font-medium">3</span>
-                                    </div>
-                                </div>
-                                <div class="md:w-11/12 md:pl-8">
-                                    <h4 class="text-white font-medium mb-3">标准化烹饪</h4>
-                                    <p class="text-light/90 leading-relaxed">
-                                        采用标准化配方和烹饪工艺，通过智能设备控制温度、时间等参数，确保每批次产品口味一致。重要参数偏差会自动报警并停机。
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            <div class="flex flex-col md:flex-row items-start">
-                                <div class="md:w-1/12 flex justify-center mb-4 md:mb-0">
-                                    <div class="bg-purple/20 w-8 h-8 rounded-full flex items-center justify-center z-10">
-                                        <span class="text-purple font-medium">4</span>
-                                    </div>
-                                </div>
-                                <div class="md:w-11/12 md:pl-8">
-                                    <h4 class="text-white font-medium mb-3">快速冷却与包装</h4>
-                                    <p class="text-light/90 leading-relaxed">
-                                        烹饪完成后迅速冷却至低温，避免细菌滋生，然后进行无菌包装。包装材料需符合食品级标准，并能承受冷链运输环境。
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            <div class="flex flex-col md:flex-row items-start">
-                                <div class="md:w-1/12 flex justify-center mb-4 md:mb-0">
-                                    <div class="bg-purple/20 w-8 h-8 rounded-full flex items-center justify-center z-10">
-                                        <span class="text-purple font-medium">5</span>
-                                    </div>
-                                </div>
-                                <div class="md:w-11/12 md:pl-8">
-                                    <h4 class="text-white font-medium mb-3">冷链储存与运输</h4>
-                                    <p class="text-light/90 leading-relaxed">
-                                        全程低温冷链运输，确保产品在储存和运输过程中的质量安全。专业冷链物流车配备温度监控系统，数据实时上传。
-                                    </p>
+                            <div class="bg-dark/70 p-4 rounded-lg border border-warmOrange/30 flex items-center justify-center col-span-2">
+                                <div class="text-center">
+                                    <i class="fa fa-industry text-5xl text-warmOrange/50 mb-3"></i>
+                                    <h4 class="text-light font-medium mb-2">荆州预制菜产业园</h4>
+                                    <p class="text-light/80 text-sm">已形成覆盖四大类、数百个SKU的产业集群，成为华中地区预制菜产业核心基地</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="mt-10 rounded-lg overflow-hidden border border-purple/20">
-                        <img src="番茄牛腩预制菜生产流程图.jpg" alt="番茄牛腩预制菜生产流程" class="w-full h-auto image-hover">
+                    <!-- 生产流程：改为与 预制菜流程.html 一致的可视化交互（主题色保留） -->
+                    <div class="bg-dark/70 p-6 rounded-xl border border-warmOrange/30 mb-6">
+                        <style>
+                            /* Scoped styles for production flow */
+                            #prod-flow { color: #f8f5f0; }
+                            #prod-flow .process-visual { position: relative; height: 320px; background: rgba(255,255,255,0.02); border-radius:12px; padding:18px; overflow:hidden; }
+                            #prod-flow .process-line { position:absolute; top:50%; left:5%; right:5%; height:4px; background: rgba(243,156,18,0.12); transform:translateY(-50%); z-index:1; }
+                            #prod-flow .step { position:absolute; top:50%; transform:translateY(-50%); width:78px; height:78px; border-radius:50%; background: rgba(255,255,255,0.03); display:flex; align-items:center; justify-content:center; flex-direction:column; box-shadow:0 8px 20px rgba(0,0,0,0.5); cursor:pointer; transition:all .2s ease; color:#fff }
+                            #prod-flow .step:hover{ transform:translateY(-50%) scale(1.06); }
+                            #prod-flow .step.active{ background: linear-gradient(135deg,#D35400,#F39C12); color:#fff }
+                            #prod-flow .step .icon{ font-size:1.4rem; margin-bottom:6px }
+                            #prod-flow .step .label{ font-size:0.85rem; font-weight:600; text-align:center }
+                            #prod-flow .step-1{ left:5% }
+                            #prod-flow .step-2{ left:23% }
+                            #prod-flow .step-3{ left:41% }
+                            #prod-flow .step-4{ left:59% }
+                            #prod-flow .step-5{ left:77% }
+                            #prod-flow .content { margin-top:14px }
+                            #prod-flow .detail { display:none; background: rgba(255,255,255,0.02); padding:16px; border-radius:8px; }
+                            #prod-flow .detail.active{ display:block }
+                            #prod-flow .num { background:#D35400; width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;margin-right:12px }
+                            @media (max-width:768px){ #prod-flow .step{ width:60px;height:60px } #prod-flow .label{ font-size:0.72rem } }
+                        </style>
+
+                        <div id="prod-flow">
+                            <div class="text-center mb-4">
+                                <h3 class="text-xl font-serif font-bold text-white mb-1">预制菜标准化生产流程</h3>
+                                <p class="text-light/80 text-sm">以番茄牛腩为例，看预制菜如何从食材变成成品</p>
+                            </div>
+
+                            <div class="process-visual">
+                                <div class="process-line"></div>
+                                <div class="step step-1 active" data-step="1"><div class="icon"><i class="fa fa-seedling"></i></div><div class="label">原材料采购</div></div>
+                                <div class="step step-2" data-step="2"><div class="icon"><i class="fa fa-robot"></i></div><div class="label">预处理</div></div>
+                                <div class="step step-3" data-step="3"><div class="label">烹饪加工</div></div>
+                                <div class="step step-4" data-step="4"><div class="icon"><i class="fa fa-temperature-low"></i></div><div class="label">快速冷却</div></div>
+                                <div class="step step-5" data-step="5"><div class="icon"><i class="fa fa-box"></i></div><div class="label">包装杀菌</div></div>
+                            </div>
+
+                            <div class="content">
+                                <div class="detail active" id="detail-1">
+                                    <div class="flex items-start mb-3"><div class="num">1</div><h4 class="text-white font-semibold">原料验收</h4></div>
+                                    <p class="text-light/80 text-sm">牛腩、番茄等原料严格筛选，农残检测合格率需达100%。</p>
+                                </div>
+                                <div class="detail" id="detail-2">
+                                    <div class="flex items-start mb-3"><div class="num">2</div><h4 class="text-white font-semibold">预处理</h4></div>
+                                    <p class="text-light/80 text-sm">自动化清洗、切割，牛腩经高温焯水处理去除血水。</p>
+                                </div>
+                                <div class="detail" id="detail-3">
+                                    <div class="flex items-start mb-3"><div class="num">3</div><h4 class="text-white font-semibold">烹饪加工</h4></div>
+                                    <p class="text-light/80 text-sm">标准化配方调味，大型压力锅统一烹制，温度误差控制在±2℃。</p>
+                                </div>
+                                <div class="detail" id="detail-4">
+                                    <div class="flex items-start mb-3"><div class="num">4</div><h4 class="text-white font-semibold">快速冷却</h4></div>
+                                    <p class="text-light/80 text-sm">真空冷却技术，90秒内将温度从90℃降至10℃以下。</p>
+                                </div>
+                                <div class="detail" id="detail-5">
+                                    <div class="flex items-start mb-3"><div class="num">5</div><h4 class="text-white font-semibold">包装杀菌</h4></div>
+                                    <p class="text-light/80 text-sm">真空包装后进行巴氏杀菌，保质期可达12个月。</p>
+                                </div>
+
+                                <div class="mt-4 flex justify-between items-center">
+                                    <button id="flow-prev" class="px-4 py-2 rounded bg-accent/20 text-accent">上一步</button>
+                                    <button id="flow-all" class="px-4 py-2 rounded bg-transparent border border-warmOrange/20 text-warmOrange">显示全部流程</button>
+                                    <button id="flow-next" class="px-4 py-2 rounded bg-accent/20 text-accent">下一步</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <script>
+                            (function(){
+                                const steps = document.querySelectorAll('#prod-flow .step');
+                                const details = document.querySelectorAll('#prod-flow .detail');
+                                const prev = document.getElementById('flow-prev');
+                                const next = document.getElementById('flow-next');
+                                const allBtn = document.getElementById('flow-all');
+                                let idx = 1, max = 5;
+                                function show(n){ idx = n; steps.forEach(s=>s.classList.toggle('active', parseInt(s.dataset.step)===n)); details.forEach(d=>d.classList.toggle('active', d.id===`detail-${n}`)); }
+                                steps.forEach(s=> s.addEventListener('click', ()=> show(parseInt(s.dataset.step))));
+                                prev.addEventListener('click', ()=> { if(idx>1) show(idx-1); });
+                                next.addEventListener('click', ()=> { if(idx<max) show(idx+1); });
+                                allBtn.addEventListener('click', ()=> {
+                                    // toggle full list
+                                    const existing = document.getElementById('prod-full');
+                                    if(existing){ existing.remove(); allBtn.textContent='显示全部流程'; return; }
+                                    const wrap = document.createElement('div'); wrap.id='prod-full'; wrap.className='mt-4 bg-transparent p-3 rounded'; let html=''; const titles=['原料验收','预处理','烹饪加工','快速冷却','包装杀菌']; const texts=['牛腩、番茄等原料严格筛选，农残检测合格率需达100%。','自动化清洗、切割，牛腩经高温焯水处理去除血水。','标准化配方调味，大型压力锅统一烹制，温度误差控制在±2℃。','真空冷却技术，90秒内将温度从90℃降至10℃以下。','真空包装后进行巴氏杀菌，保质期可达12个月。']; for(let i=0;i<titles.length;i++){ html+=`<h4 class="text-warmOrange font-semibold">${i+1}. ${titles[i]}</h4><p class="text-light/80 text-sm mb-3">${texts[i]}</p>`; } wrap.innerHTML=html; document.querySelector('#prod-flow .content').appendChild(wrap); allBtn.textContent='关闭全部流程'; });
+                                show(1);
+                            })();
+                        </script>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 结语 -->
-        <section class="section-fade mb-20">
-            <div class="max-w-3xl mx-auto bg-gradient-to-br from-dark/80 to-darker/90 p-10 rounded-2xl border border-accent/30 text-center">
-                <h2 class="text-3xl font-serif font-semibold text-white mb-6 text-shadow">标准之外，更需透明的信心</h2>
-                <p class="text-light/90 mb-8 leading-relaxed text-lg">
-                    符合国家标准的预制菜，本质是农业生产与食品工业化的正常延伸，它并非原罪。而国标、产业现实与消费者认知之间存在一道<span class="text-accent font-bold">"信任的沟壑"</span>。真正的挑战，不在于"要不要发展"，而在于如何让发展更透明、更负责。
-                </p>
-                <p class="text-light/90 mb-10 leading-relaxed text-lg">
-                    预制菜这盘菜能否实现生产者、餐厅与消费者的共赢，不仅取决于国标这条<span class="text-primary font-bold">"底线"</span>能否守牢，更取决于能否建立一条让信息阳光化、健康指标更明确的<span class="text-tertiary font-bold">"高线"</span>。这需要行业更主动的透明，也需要监管更细致的介入。毕竟，吃进嘴里的东西，安全感来自知情，放心源于透明。
-                </p>
-                <div class="inline-block">
-                    <a href="#intro" class="inline-flex items-center justify-center bg-accent/20 hover:bg-accent/40 text-accent border border-accent/40 rounded-full px-6 py-3 transition-all duration-300 hover:scale-105">
-                        <i class="fa fa-arrow-up mr-2"></i>
-                        返回顶部
-                    </a>
+        <!-- 知识图谱部分 -->
+        <section id="knowledge" class="mb-24">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center mb-8">
+                    <div class="h-px bg-warmYellow/30 flex-grow"></div>
+                    <h2 class="text-2xl sm:text-3xl font-serif font-semibold text-white px-4">预制菜知识图谱</h2>
+                    <div class="h-px bg-warmYellow/30 flex-grow"></div>
+                </div>
+                
+                <div class="bg-dark/80 rounded-xl border border-warmYellow/20 p-5">
+                    <div class="text-center mb-5">
+                        <h3 class="text-xl font-serif font-bold text-warmYellow mb-2">预制菜产业全景图</h3>
+                        <p class="text-light/80 text-sm">点击节点探索预制菜产业的全貌与细节</p>
+                    </div>
+                    
+                    <!-- 简化控制按钮 -->
+                    <div class="flex justify-center gap-3 mb-6 flex-wrap">
+                        <button class="px-4 py-1.5 rounded-full bg-warmYellow/20 text-warmYellow border border-warmYellow/40 text-sm" id="reset-btn">重置视图</button>
+                    </div>
+                    
+                    <!-- 市场规模数据卡片 -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-dark/50 p-3 rounded-lg border border-warmYellow/20 text-center card-hover">
+                            <h4 class="text-xl font-bold text-warmYellow">3000亿+</h4>
+                            <p class="text-light/80 text-xs">市场规模(2023)</p>
+                        </div>
+                        <div class="bg-dark/50 p-3 rounded-lg border border-warmYellow/20 text-center card-hover">
+                            <h4 class="text-xl font-bold text-warmYellow">23.6%</h4>
+                            <p class="text-light/80 text-xs">年增长率</p>
+                        </div>
+                        <div class="bg-dark/50 p-3 rounded-lg border border-warmYellow/20 text-center card-hover">
+                            <h4 class="text-xl font-bold text-warmYellow">5000+</h4>
+                            <p class="text-light/80 text-xs">相关企业数量</p>
+                        </div>
+                        <div class="bg-dark/50 p-3 rounded-lg border border-warmYellow/20 text-center card-hover">
+                            <h4 class="text-xl font-bold text-warmYellow">1.2亿</h4>
+                            <p class="text-light/80 text-xs">日均消费量(份)</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 简化图谱容器 -->
+                    <div id="graph-container" class="h-[400px] w-full bg-dark/60 rounded-lg p-3 border border-warmYellow/30 mb-5"></div>
+                    
+                    <!-- 简化图例（颜色与图谱节点一致） -->
+                    <div class="flex justify-center flex-wrap gap-4">
+                        <div class="flex items-center text-xs">
+                            <div class="w-3 h-3 rounded-full mr-1" style="background:#e74c3c"></div>
+                            <span class="text-light/80">核心概念</span>
+                        </div>
+                        <div class="flex items-center text-xs">
+                            <div class="w-3 h-3 rounded-full mr-1" style="background:#9b59b6"></div>
+                            <span class="text-light/80">生产环节</span>
+                        </div>
+                        <div class="flex items-center text-xs">
+                            <div class="w-3 h-3 rounded-full mr-1" style="background:#2ecc71"></div>
+                            <span class="text-light/80">消费相关</span>
+                        </div>
+                        <div class="flex items-center text-xs">
+                            <div class="w-3 h-3 rounded-full mr-1" style="background:#3498db"></div>
+                            <span class="text-light/80">政策标准</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
+
+        <!-- 预制菜消费计算器部分 -->
+        <section id="calculator-section" class="mb-24">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center mb-8">
+                    <div class="h-px bg-secondary/30 flex-grow"></div>
+                    <h2 class="text-2xl sm:text-3xl font-serif font-semibold text-white px-4">预制菜消费计算器</h2>
+                    <div class="h-px bg-secondary/30 flex-grow"></div>
+                </div>
+                
+                <div class="bg-dark/80 rounded-xl border border-secondary/20 p-6">
+                    <div class="max-w-800 mx-auto bg-white rounded-2xl overflow-hidden shadow-xl">
+                        <header class="bg-gradient-to-r from-secondary to-warmOrange text-white p-6 text-center">
+                            <h2 class="text-2xl md:text-3xl font-bold mb-2">预制菜消费计算器</h2>
+                            <p class="opacity-90">测测你的生活被预制菜渗透了多少？</p>
+                            <div class="h-1.5 bg-white/30 rounded-full mt-4 overflow-hidden">
+                                <div class="h-full bg-white rounded-full transition-all duration-500" id="progress" style="width: 0%"></div>
+                            </div>
+                        </header>
+                        
+                        <div class="p-6" id="calculator">
+                            <!-- 问题将通过JavaScript动态生成 -->
+                        </div>
+                        
+                        <div class="p-6 hidden" id="result-container">
+                            <h3 class="text-xl font-bold text-dark mb-4 text-center">你的预制菜暴露报告</h3>
+                            <div class="text-center mb-6">
+                                <div class="text-5xl font-bold text-secondary mb-2" id="score-value">0%</div>
+                                <div class="text-lg text-dark/80" id="score-label">正在计算...</div>
+                            </div>
+                            
+                            <div class="grid md:grid-cols-2 gap-4 mb-6">
+                                <div class="bg-dark/50 p-4 rounded-lg text-center">
+                                    <p class="text-light/80 mb-1">同城同龄人平均</p>
+                                    <p class="text-2xl font-bold text-tertiary" id="average-comparison">45%</p>
+                                </div>
+                                <div class="bg-dark/50 p-4 rounded-lg text-center">
+                                    <p class="text-light/80 mb-1">全国平均</p>
+                                    <p class="text-2xl font-bold text-tertiary" id="national-average">52%</p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                                <div class="bg-dark/50 p-4 rounded-lg">
+                                    <h4 class="text-white font-medium mb-3 text-center">预制菜渗透场景分布</h4>
+                                    <canvas id="category-chart" height="200"></canvas>
+                                </div>
+                                <div class="bg-dark/50 p-4 rounded-lg">
+                                    <h4 class="text-white font-medium mb-3 text-center">暴露指数对比</h4>
+                                    <canvas id="comparison-chart" height="200"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-dark/50 p-4 rounded-lg">
+                                <h4 class="text-white font-medium mb-3">📊 你的消费画像分析</h4>
+                                <ul class="space-y-2 text-light/90 text-sm" id="insights-list">
+                                    <!-- 分析结果将通过JavaScript动态生成 -->
+                                </ul>
+                            </div>
+                            
+                            <div class="mt-6 text-center">
+                                <button onclick="restartCalculator()" class="bg-secondary hover:bg-warmOrange text-white font-medium py-2 px-6 rounded-full transition-colors duration-300">
+                                    重新测试
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- 结语：放置于页面底部 -->
+        <section id="conclusion" class="mb-24">
+            <div class="max-w-6xl mx-auto">
+                <div class="bg-dark/80 p-6 rounded-xl border border-warmYellow/20">
+                    <h3 class="text-xl sm:text-2xl font-serif font-semibold text-warmYellow mb-4">结语</h3>
+                    <div class="prose prose-invert max-w-none">
+                        <p class="text-light/90 leading-relaxed">
+                            真正的挑战，不在于“要不要发展”，而在于如何让发展更透明、更负责。
+                            当标准在“告知”与“营养”上留有模糊地带，当庞大的产能主要通过B端“隐形”地抵达消费者，信任的沟壑便难以跨越。预制菜这盘菜能否实现生产者、餐厅与消费者的共赢，不仅取决于国标这条“底线”能否守牢，更取决于能否建立一条让信息阳光化、健康指标更明确的“高线”。这需要行业更主动的透明，也需要监管更细致的介入。毕竟，吃进嘴里的东西，安全感来自知情，放心源于透明。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- 页脚 -->
-    <footer class="bg-darker border-t border-accent/20 py-12">
+    <footer class="bg-dark border-t border-accent/30 py-8">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="max-w-4xl mx-auto text-center">
-                <h2 class="text-2xl font-serif font-bold text-accent mb-6">预制菜观察</h2>
-                <p class="text-light/70 mb-8 max-w-2xl mx-auto">
-                    一场关于食品安全、消费习惯与产业变革的数据新闻
-                </p>
-                <div class="flex justify-center space-x-6 mb-8">
-                    <a href="#" class="text-light/70 hover:text-accent transition-colors duration-300">
-                        <i class="fa fa-weibo text-xl"></i>
-                    </a>
-                    <a href="#" class="text-light/70 hover:text-primary transition-colors duration-300">
-                        <i class="fa fa-wechat text-xl"></i>
-                    </a>
-                    <a href="#" class="text-light/70 hover:text-secondary transition-colors duration-300">
-                        <i class="fa fa-instagram text-xl"></i>
-                    </a>
-                    <a href="#" class="text-light/70 hover:text-tertiary transition-colors duration-300">
-                        <i class="fa fa-twitter text-xl"></i>
-                    </a>
-                </div>
-                <div class="mb-6 bg-dark/50 rounded-lg p-4 inline-block border border-accent/20">
-                    <h3 class="text-white font-medium mb-3">创作小组成员</h3>
-                    <p class="text-light/70">张籼艺，杨宁宁，鲍洁婷，王笔胜，符顺颖</p>
-                </div>
-                <div class="text-muted text-sm">
-                    <p>© 2025 数据新闻小组 版权所有</p>
-                    <p class="mt-2">数据来源：艾媒数据中心、国家统计局、美团、安信证券研究中心</p>
-                </div>
+            <div class="text-center text-light/60 text-sm">
+                <p>© 2025 小组作业 | 数据来源：行业报告与公开数据整理</p>
+                <p class="mt-2">仅作分享，不具有任何建议。成员：张籼艺，杨宁宁，鲍洁婷，王笔胜，符顺颖</p>
             </div>
         </div>
     </footer>
 
-    <!-- 图片查看器 -->
-    <div id="image-viewer" class="fixed inset-0 bg-black/95 z-50 hidden items-center justify-center p-4">
-        <button id="close-viewer" class="absolute top-6 right-6 text-white hover:text-accent text-2xl">
-            <i class="fa fa-times"></i>
-        </button>
-        <img id="viewer-image" src="" alt="大图查看" class="max-w-full max-h-screen">
+    <!-- 词云信息面板 -->
+    <div id="info-panel" class="fixed hidden inset-0 bg-dark/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-darker border border-accent/40 rounded-xl p-6 max-w-md w-full max-h-[80vh] overflow-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="info-title" class="text-xl font-bold text-accent"></h3>
+                <button onclick="closeInfo()" class="text-light/60 hover:text-white" aria-label="关闭">
+                    <!-- inline SVG fallback for close icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </button>
+            </div>
+            <div id="info-content" class="text-light/90 leading-relaxed"></div>
+            <div class="mt-6 text-center">
+                <button onclick="closeInfo()" class="bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 rounded-full px-4 py-2 transition-all duration-300">
+                    关闭
+                </button>
+            </div>
+        </div>
     </div>
-    </footer>
 
     <script>
-        // 移动端菜单切换
-        document.getElementById('mobile-menu-button').addEventListener('click', function() {
-            const mobileMenu = document.getElementById('mobile-menu');
-            mobileMenu.classList.toggle('hidden');
-        });
-
-        // 滚动显示动画
+        // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
-            const sections = document.querySelectorAll('.section-fade');
-            
-            const observerOptions = {
-                root: null,
-                rootMargin: '0px',
-                threshold: 0.1
-            };
-            
-            const observer = new IntersectionObserver(function(entries, observer) {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('section-visible');
-                        observer.unobserve(entry.target);
-                    }
+            // 平滑滚动
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
                 });
-            }, observerOptions);
-            
-            sections.forEach(section => {
-                observer.observe(section);
             });
 
-            // 初始化图表
-            const ctx = document.getElementById('attitudeChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
+            // 初始化计算器
+            initCalculator();
+            // 初始化知识图谱
+            initKnowledgeGraph();
+        });
+
+        // 词云基础配置
+        let speedMultiplier = 1;
+        const infoPanel = document.getElementById('info-panel');
+        
+        // 修复后的词云数据（移除重复项，统一结构）
+        const bulletData = [
+            { text: "预制菜", size: 40, color: "#E74C3C", info: "预制菜定义：以农、畜、禽、水产品为原料，配以各种辅料，经预加工而成的成品或半成品", speed: 1, emotion: "neutral" },
+            { text: "便捷", size: 32, color: "#F1C40F", info: "最大优势：节省烹饪时间，适应快节奏都市生活。外卖平台中预制菜占比已超过70%", speed: 1, emotion: "positive" },
+            { text: "添加剂", size: 36, color: "#E67E22", info: "消费者担忧：虽然符合国家标准，但复杂的添加剂成分仍让部分消费者不安", speed: 1, emotion: "negative" },
+            { text: "成本", size: 30, color: "#F39C12", info: "经济账：餐厅使用预制菜可降低30%以上的人工成本", speed: 1, emotion: "neutral" },
+            { text: "标准化", size: 34, color: "#55efc4", info: "工业化的核心：确保口味一致性，降低人工成本，实现规模化生产。", speed: 1, emotion: "positive" },
+            { text: "外卖", size: 34, color: "#F39C12", info: "主要场景：外卖平台是预制菜最大的销售渠道，占比超过50%", speed: 1, emotion: "neutral" },
+            { text: "效率", size: 32, color: "#7ed6df", info: "时间效率：预制菜将烹饪时间从小时级缩短到分钟级，满足现代效率需求。", speed: 1, emotion: "positive" },
+            { text: "一致", size: 28, color: "#81ecec", info: "品质稳定：同一菜品在不同时间、地点保持完全相同的口味。", speed: 1, emotion: "positive" },
+            { text: "性价比", size: 30, color: "#74b9ff", info: "价格优势：相比餐厅现做菜品的价格优势明显。", speed: 1, emotion: "positive" },
+            { text: "创新", size: 28, color: "#a29bfe", info: "产品创新：预制菜推动食品工业技术革新和新品类开发。", speed: 1, emotion: "positive" },
+            { text: "食品安全", size: 38, color: "#ff6b6b", info: "预制菜安全争议：添加剂使用、保质期过长、生产过程透明度不足。消费者最关心的核心问题之一。", speed: 1, emotion: "negative" },
+            { text: "信任", size: 36, color: "#ff6b6b", info: "信任危机：消费者对预制菜标签真实性、生产过程透明度的不信任感日益增强。", speed: 1, emotion: "negative" },
+            { text: "冷链", size: 30, color: "#ffeaa7", info: "技术基础：全程冷链运输确保食品安全，但也增加了能源消耗和环境影响。", speed: 1, emotion: "neutral" },
+            { text: "餐厅", size: 28, color: "#fdcb6e", info: "主要渠道：连锁餐厅预制菜使用率超过80%，夫妻小店也开始采用以控制成本。", speed: 1, emotion: "neutral" },
+            { text: "国家标准", size: 34, color: "#ffeaa7", info: "缺失环节：行业标准体系不完善，分类、生产、标识等缺乏统一规范。", speed: 1, emotion: "neutral" },
+            { text: "工业化", size: 32, color: "#fdcb6e", info: "生产模式：从手工制作到工业化生产的转变，效率提升但个性化丧失。", speed: 1, emotion: "neutral" },
+            { text: "消费知情权", size: 36, color: "#ffeaa7", info: "消费者权益：是否有权知道所购买的食品是预制菜还是现场制作。", speed: 1, emotion: "neutral" }
+        ];
+        
+        // 词云初始化（基于 浅色词云.html，但视觉适配为深色站点主题）
+        (function initWordCloud() {
+            const container = document.getElementById('bullet-cloud');
+            if (!container) return;
+            if (!container.style.height || container.style.height.indexOf('px') === -1) {
+                container.style.height = (container.offsetHeight || 280) + 'px';
+            }
+            if (container.dataset.wordcloudInit) return;
+            container.dataset.wordcloudInit = '1';
+
+            // 状态变量（暴露到 window 供控制按钮调用）
+            let bullets = [];
+            let isPlaying = true;
+            let bulletSpeed = 5;
+            let bulletDensity = 1;
+            let totalBullets = 0;
+            let clickCount = 0;
+            let startTime = Date.now();
+
+            window.toggleBullets = function(e){ isPlaying = !isPlaying; if(e && e.target) e.target.textContent = isPlaying? '⏸ 暂停' : '▶️ 继续'; };
+            window.changeSpeed = function(e){ bulletSpeed = bulletSpeed===5?10:bulletSpeed===10?1:5; if(e && e.target){ const labels = {1:'慢速',5:'中速',10:'快速'}; e.target.textContent = '⚡ '+labels[bulletSpeed]; } };
+            window.changeDensity = function(e){ bulletDensity = bulletDensity===1?2:bulletDensity===2?0.5:1; if(e && e.target){ const labels = {'0.5':'稀疏','1':'正常','2':'密集'}; e.target.textContent = '🔢 '+labels[String(bulletDensity)]; } };
+            window.clearBullets = function(){ bullets = []; totalBullets = 0; updateStats(); };
+            window.fullScreen = function(e){ const elem = container; if (!document.fullscreenElement){ elem.requestFullscreen?.(); if(e&&e.target) e.target.textContent='📱 退出全屏'; } else { document.exitFullscreen?.(); if(e&&e.target) e.target.textContent='📺 全屏'; } };
+            window.filterBullets = function(filter, e){ window._bcFilter = filter || 'all'; if(e && e.target){ /* simple visual feedback */ } };
+
+            // p5 sketch
+            new p5(function(sketch){
+                let canvas;
+                let fontSizeMultiplier = 1;
+
+                function spawnBullet() {
+                    const filtered = bulletData.filter(b=>{ if(!window._bcFilter || window._bcFilter==='all') return true; return b.emotion===window._bcFilter; });
+                    if (!filtered.length) return;
+                    const t = filtered[Math.floor(Math.random()*filtered.length)];
+                    const yAttempts = 0;
+                    let y = sketch.random(40, sketch.height-40);
+                    const b = {
+                        text: t.text,
+                        size: t.size || 28,
+                        color: t.color || '#ffffff',
+                        info: t.info || '',
+                        x: sketch.width + sketch.random(20,200),
+                        y: y,
+                        speed: (t.speed||1) * sketch.random(1,2),
+                        width: 0
+                    };
+                    bullets.push(b);
+                    totalBullets++;
+                }
+
+                sketch.setup = function(){
+                    const w = container.offsetWidth || 600;
+                    const h = parseInt(container.style.height) || 280;
+                    canvas = sketch.createCanvas(w, h);
+                    canvas.parent('bullet-cloud');
+                    canvas.elt.style.background = 'transparent';
+                    sketch.textFont('Inter, Noto Serif SC, Arial, sans-serif');
+                    sketch.textAlign(sketch.LEFT, sketch.CENTER);
+                    // initial bullets
+                    for(let i=0;i<12;i++) spawnBullet();
+                    setInterval(()=>{ if(isPlaying && bullets.length < 60*bulletDensity) spawnBullet(); }, 600);
+                    setInterval(updateStats,1000);
+                };
+
+                sketch.draw = function(){
+                    sketch.clear();
+                    // subtle scanlines
+                    sketch.noFill();
+                    sketch.stroke(255,255,255,8);
+                    sketch.strokeWeight(1);
+                    for(let y=0;y<sketch.height;y+=8) sketch.line(0,y,sketch.width,y);
+
+                    for(let i=bullets.length-1;i>=0;i--){
+                        const b = bullets[i];
+                        if(isPlaying) b.x -= b.speed * bulletSpeed * 0.12;
+                        sketch.textSize(b.size * fontSizeMultiplier);
+                        b.width = sketch.textWidth(b.text) + 40;
+
+                        const hovered = (sketch.mouseX > b.x && sketch.mouseX < b.x + b.width && sketch.mouseY > b.y - b.size/2 && sketch.mouseY < b.y + b.size/2);
+
+                        // background rounded rect
+                        sketch.noStroke();
+                        const bg = sketch.color(b.color);
+                        bg.setAlpha(200);
+                        sketch.fill(bg);
+                        const rectH = b.size * 1.2;
+                        sketch.rect(b.x, b.y - rectH/2, b.width, rectH, rectH/2);
+
+                        // text
+                        sketch.fill(255);
+                        sketch.text(b.text, b.x + 20, b.y);
+
+                        if(hovered){
+                            sketch.fill(255);
+                            sketch.triangle(b.x + b.width, b.y - 6, b.x + b.width + 10, b.y, b.x + b.width, b.y + 6);
+                        }
+
+                        if(b.x + b.width < 0) bullets.splice(i,1);
+                    }
+                };
+
+                sketch.mousePressed = function(){
+                    for(let i=0;i<bullets.length;i++){
+                        const b = bullets[i];
+                        if(sketch.mouseX > b.x && sketch.mouseX < b.x + b.width && sketch.mouseY > b.y - b.size/2 && sketch.mouseY < b.y + b.size/2){
+                            // use existing info panel in the page
+                            const titleEl = document.getElementById('info-title');
+                            const contentEl = document.getElementById('info-content');
+                            if(titleEl) titleEl.textContent = b.text;
+                            if(contentEl) contentEl.textContent = b.info || '';
+                            const panel = document.getElementById('info-panel');
+                            if(panel) panel.classList.remove('hidden');
+                            clickCount++;
+                            updateStats();
+                            return;
+                        }
+                    }
+                };
+
+                sketch.windowResized = function(){
+                    const w = container.offsetWidth || 600;
+                    const h = parseInt(container.style.height) || 280;
+                    sketch.resizeCanvas(w,h);
+                };
+
+                function updateStats(){
+                    const curr = bullets.length;
+                    const elCur = document.getElementById('current-count'); if(elCur) elCur.textContent = curr;
+                    const elTot = document.getElementById('total-count'); if(elTot) elTot.textContent = totalBullets;
+                    const elClick = document.getElementById('click-count'); if(elClick) elClick.textContent = clickCount;
+                }
+            });
+        })();
+        
+        // 词云控制函数
+        function closeInfo() {
+            infoPanel.classList.add('hidden');
+        }
+        
+        function changeSpeedValue(value) {
+            speedMultiplier = value / 5;
+        }
+
+        // 知识图谱初始化（参考 知识图谱.html，加入交互信息面板与高亮）
+        function initKnowledgeGraph() {
+            const width = document.getElementById('graph-container').clientWidth;
+            const height = document.getElementById('graph-container').clientHeight;
+
+            d3.select('#graph-container').html('');
+
+            // 创建 SVG 和信息面板
+            const svg = d3.select('#graph-container').append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .style('display','block');
+
+            const infoPanel = d3.select('#graph-container').append('div')
+                .attr('id','graph-info-panel')
+                .style('position','absolute')
+                .style('top','18px')
+                .style('right','18px')
+                .style('width','320px')
+                .style('max-height','360px')
+                .style('overflow','auto')
+                .style('padding','14px')
+                .style('background','#1C140D')
+                .style('border','1px solid rgba(212,172,13,0.08)')
+                .style('border-radius','10px')
+                .style('color','#f8f5f0')
+                .style('display','none');
+
+            infoPanel.append('h3').attr('id','graph-info-title').style('margin-bottom','8px').style('color','#F1C40F');
+            infoPanel.append('div').attr('id','graph-info-content').style('font-size','13px').style('line-height','1.5');
+
+            // 数据：根据 知识图谱.html 扩展节点与连线
+            const nodes = [
+                { id: "premade-food", name: "预制菜", type: "core", size: 30, color: "#e74c3c", info: { title: '预制菜', content: '预制菜是以农、畜、禽、水产品为原料，配以各种辅料，经预加工而成的成品或半成品。', stats: '市场规模(2023): 3000亿+' } },
+                { id: "ready-to-eat", name: "即食食品", type: "category", size: 35, color: "#3498db", info: { title: '即食食品', content: '开袋即食，无需额外加工。例如即食鸡胸肉、沙拉、罐头、卤味。', examples: ['即食鸡胸肉','沙拉碗','水果罐头'] } },
+                { id: "ready-to-heat", name: "即热食品", type: "category", size: 35, color: "#3498db", info: { title: '即热食品', content: '需要简单加热即可食用，例如微波米饭、自热火锅、速食汤品。' } },
+                { id: "ready-to-cook", name: "即烹食品", type: "category", size: 35, color: "#3498db", info: { title: '即烹食品', content: '需要简单烹饪加工，例如腌制牛排、半成品菜肴。' } },
+                { id: "ready-to-prep", name: "即配食品", type: "category", size: 35, color: "#3498db", info: { title: '即配食品', content: '已洗净、切配好的净菜，需烹饪后食用。' } },
+                { id: "mapo-tofu", name: "麻婆豆腐", type: "dish", size: 25, color: "#2ecc71", info: { title: '麻婆豆腐（预制）', content: '标准化程度高，还原度可达85%。', details: '月均销量：50万+份，价格区间：15-25元' } },
+                { id: "kungpao-chicken", name: "宫保鸡丁", type: "dish", size: 25, color: "#2ecc71" },
+                { id: "sweet-sour-pork", name: "糖醋里脊", type: "dish", size: 25, color: "#2ecc71" },
+                { id: "beef-rice", name: "肥牛饭", type: "dish", size: 25, color: "#2ecc71" },
+                { id: "weizhixiang", name: "味知香", type: "brand", size: 30, color: "#f39c12", info: { title: '味知香', content: '中国预制菜知名品牌，专注半成品菜研发与销售。', details: '上市时间：2021年，门店：1600+家' } },
+                { id: "sanquan", name: "三全食品", type: "brand", size: 30, color: "#f39c12" },
+                { id: "anjoy", name: "安井食品", type: "brand", size: 30, color: "#f39c12" },
+                { id: "xianhe", name: "仙鹤食品", type: "brand", size: 30, color: "#f39c12" },
+                { id: "central-kitchen", name: "中央厨房", type: "industry", size: 30, color: "#9b59b6", info: { title: '中央厨房', content: '预制菜生产的核心环节，实现标准化、规模化生产。', details: '全国数量：5000+家，自动化：70-90%' } },
+                { id: "cold-chain", name: "冷链物流", type: "industry", size: 30, color: "#9b59b6" },
+                { id: "retail", name: "零售渠道", type: "industry", size: 30, color: "#9b59b6" },
+                { id: "takeout", name: "外卖平台", type: "industry", size: 30, color: "#9b59b6" }
+            ];
+
+            const links = [
+                { source: "premade-food", target: "ready-to-eat" },
+                { source: "premade-food", target: "ready-to-heat" },
+                { source: "premade-food", target: "ready-to-cook" },
+                { source: "premade-food", target: "ready-to-prep" },
+                { source: "premade-food", target: "mapo-tofu" },
+                { source: "premade-food", target: "kungpao-chicken" },
+                { source: "premade-food", target: "beef-rice" },
+                { source: "ready-to-eat", target: "mapo-tofu" },
+                { source: "ready-to-heat", target: "kungpao-chicken" },
+                { source: "ready-to-cook", target: "sweet-sour-pork" },
+                { source: "ready-to-prep", target: "beef-rice" },
+                { source: "ready-to-eat", target: "weizhixiang" },
+                { source: "ready-to-heat", target: "sanquan" },
+                { source: "ready-to-cook", target: "anjoy" },
+                { source: "ready-to-prep", target: "xianhe" },
+                { source: "weizhixiang", target: "central-kitchen" },
+                { source: "sanquan", target: "cold-chain" },
+                { source: "anjoy", target: "retail" },
+                { source: "xianhe", target: "takeout" },
+                { source: "central-kitchen", target: "cold-chain" },
+                { source: "cold-chain", target: "retail" },
+                { source: "retail", target: "takeout" }
+            ];
+
+            // 力导向布局
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(110))
+                .force('charge', d3.forceManyBody().strength(-250))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => d.size + 8));
+
+            // 绘制连线
+            const link = svg.append('g').attr('stroke', 'rgba(255,255,255,0.08)').selectAll('line')
+                .data(links).enter().append('line').attr('stroke-width', 1.5).style('opacity',0.7);
+
+            // 节点组（circle + text）
+            const node = svg.append('g').selectAll('g')
+                .data(nodes)
+                .enter().append('g')
+                .attr('class','graph-node')
+                .style('cursor','pointer')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended))
+                .on('click', handleNodeClick);
+
+            node.append('circle')
+                .attr('r', d => d.size)
+                .attr('fill', d => d.color)
+                .attr('stroke', 'rgba(255,255,255,0.12)')
+                .attr('stroke-width', 2);
+
+            node.append('text')
+                .text(d => d.name)
+                .attr('font-size', 12)
+                .attr('fill', '#fff')
+                .attr('dx', d => d.size + 6)
+                .attr('dy', '.35em');
+
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node.attr('transform', d => `translate(${Math.max(d.size, Math.min(width - d.size, d.x))},${Math.max(d.size, Math.min(height - d.size, d.y))})`);
+            });
+
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x; d.fy = d.y;
+            }
+            function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+            function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+
+            // 点击显示信息并高亮相关节点
+            function handleNodeClick(event, d) {
+                // 计算连接集合
+                const connected = new Set([d.id]);
+                links.forEach(l => {
+                    if (l.source.id === d.id || l.target.id === d.id || l.source === d.id || l.target === d.id) {
+                        connected.add(l.source.id || l.source);
+                        connected.add(l.target.id || l.target);
+                    }
+                });
+
+                // 节点高亮
+                node.transition().duration(250).style('opacity', nd => connected.has(nd.id) ? 1 : 0.2);
+                link.transition().duration(250).style('opacity', ld => (connected.has(ld.source.id || ld.source) && connected.has(ld.target.id || ld.target)) ? 0.9 : 0.06);
+
+                // 填充信息面板
+                d3.select('#graph-info-title').text(d.name || '节点');
+                const content = d.info && d.info.content ? d.info.content : (d.type ? `类别：${d.type}` : '无详细信息');
+                d3.select('#graph-info-content').html(`<p>${content}</p>`);
+                infoPanel.style('display', 'block');
+            }
+
+            // 控制按钮
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                node.transition().style('opacity',1);
+                link.transition().style('opacity',0.7);
+                d3.select('#graph-info-panel').style('display','none');
+                simulation.alpha(1).restart();
+            });
+
+            document.getElementById('expand-btn').addEventListener('click', () => {
+                simulation.force('charge', d3.forceManyBody().strength(-500));
+                simulation.alpha(1).restart();
+            });
+
+            document.getElementById('cluster-btn').addEventListener('click', () => {
+                simulation.force('charge', d3.forceManyBody().strength(-80));
+                simulation.alpha(1).restart();
+            });
+
+            // 点击画布空白处关闭面板
+            svg.on('click', (event) => {
+                if (event.target.tagName === 'svg') {
+                    node.transition().style('opacity',1);
+                    link.transition().style('opacity',0.7);
+                    d3.select('#graph-info-panel').style('display','none');
+                }
+            });
+
+            // 窗口变化自适应
+            window.addEventListener('resize', () => {
+                const newW = document.getElementById('graph-container').clientWidth;
+                const newH = document.getElementById('graph-container').clientHeight;
+                svg.attr('width', newW).attr('height', newH);
+                simulation.force('center', d3.forceCenter(newW/2, newH/2));
+                simulation.alpha(0.5).restart();
+            });
+        }
+
+        // 预制菜消费计算器逻辑
+        let currentQuestion = 0;
+        let scores = {
+            takeout: 0,
+            convenience: 0,
+            restaurant: 0,
+            supermarket: 0,
+            work: 0
+        };
+        
+        // 问题库
+        const questions = [
+            {
+                text: "你平均每周点多少次外卖？",
+                category: "takeout",
+                options: [
+                    { text: "几乎不点", value: 0 },
+                    { text: "1-2次", value: 10 },
+                    { text: "3-5次", value: 30 },
+                    { text: "6-10次", value: 60 },
+                    { text: "10次以上", value: 90 }
+                ]
+            },
+            {
+                text: "你多久购买一次便利店即食食品？",
+                category: "convenience",
+                options: [
+                    { text: "几乎不买", value: 0 },
+                    { text: "每月1-2次", value: 10 },
+                    { text: "每周1-2次", value: 30 },
+                    { text: "每周3-5次", value: 60 },
+                    { text: "几乎每天", value: 90 }
+                ]
+            },
+            {
+                text: "你在外就餐时，更倾向于选择？",
+                category: "restaurant",
+                options: [
+                    { text: "强调现做的餐厅", value: 10 },
+                    { text: "连锁快餐", value: 60 },
+                    { text: "中式快餐", value: 80 },
+                    { text: "无所谓，看价格和口味", value: 40 },
+                    { text: "专门的预制菜餐厅", value: 90 }
+                ]
+            },
+            {
+                text: "你是否会从超市购买预制菜回家加热食用？",
+                category: "supermarket",
+                options: [
+                    { text: "从不购买", value: 0 },
+                    { text: "偶尔，每月1-2次", value: 20 },
+                    { text: "经常，每周1-2次", value: 50 },
+                    { text: "很频繁，每周3-5次", value: 80 },
+                    { text: "几乎每天都吃", value: 100 }
+                ]
+            },
+            {
+                text: "你的工作餐通常是？",
+                category: "work",
+                options: [
+                    { text: "自己带饭", value: 10 },
+                    { text: "公司食堂现做", value: 20 },
+                    { text: "外卖", value: 70 },
+                    { text: "便利店便当", value: 80 },
+                    { text: "预制菜加热", value: 90 }
+                ]
+            }
+        ];
+        
+        // 初始化计算器
+        function initCalculator() {
+            currentQuestion = 0;
+            scores = {
+                takeout: 0,
+                convenience: 0,
+                restaurant: 0,
+                supermarket: 0,
+                work: 0
+            };
+            showQuestion(currentQuestion);
+            updateProgress();
+        }
+        
+        // 重新开始计算器
+        function restartCalculator() {
+            currentQuestion = 0;
+            scores = {
+                takeout: 0,
+                convenience: 0,
+                restaurant: 0,
+                supermarket: 0,
+                work: 0
+            };
+            document.getElementById('result-container').classList.add('hidden');
+            document.getElementById('calculator').classList.remove('hidden');
+            showQuestion(currentQuestion);
+            updateProgress();
+        }
+        
+        // 显示问题
+        function showQuestion(index) {
+            if (index >= questions.length) {
+                calculateResult();
+                return;
+            }
+            
+            const question = questions[index];
+            const calculatorEl = document.getElementById('calculator');
+            
+            let html = `<div class="question">
+                <h3 class="text-xl font-bold text-black mb-6">${question.text}</h3>
+                <div class="options space-y-3">`;
+
+            question.options.forEach(option => {
+                html += `<label class="block p-4 border border-gray-200 rounded-lg hover:border-secondary cursor-pointer transition-colors text-black">
+                    <input type="radio" name="q${index}" value="${option.value}" class="mr-2">
+                    ${option.text}
+                </label>`;
+            });
+            
+            html += `</div>
+                <div class="mt-6 text-right">
+                    <button onclick="nextQuestion(${index})" class="bg-secondary hover:bg-warmOrange text-white font-medium py-2 px-6 rounded-full transition-colors duration-300">
+                        下一步
+                    </button>
+                </div>
+            </div>`;
+            
+            calculatorEl.innerHTML = html;
+        }
+        
+        // 下一题
+        function nextQuestion(index) {
+            const selectedOption = document.querySelector(`input[name="q${index}"]:checked`);
+            if (!selectedOption) {
+                alert("请选择一个选项");
+                return;
+            }
+            
+            // 保存当前答案
+            const question = questions[index];
+            scores[question.category] = parseInt(selectedOption.value);
+            
+            currentQuestion++;
+            showQuestion(currentQuestion);
+            updateProgress();
+        }
+        
+        // 更新进度条
+        function updateProgress() {
+            const progress = (currentQuestion / questions.length) * 100;
+            document.getElementById('progress').style.width = `${progress}%`;
+        }
+        
+        // 计算结果
+        function calculateResult() {
+            // 计算总分
+            let totalScore = 0;
+            Object.values(scores).forEach(score => {
+                totalScore += score;
+            });
+            const finalScore = Math.round(totalScore / Object.keys(scores).length);
+            
+            // 显示结果
+            document.getElementById('score-value').textContent = `${finalScore}%`;
+            
+            // 设置评分标签
+            let scoreLabel = '';
+            if (finalScore < 30) {
+                scoreLabel = '轻度暴露：你的生活很少依赖预制菜';
+            } else if (finalScore < 60) {
+                scoreLabel = '中度暴露：预制菜在你生活中占一定比例';
+            } else {
+                scoreLabel = '高度暴露：你的生活高度依赖预制菜';
+            }
+            document.getElementById('score-label').textContent = scoreLabel;
+            
+            // 生成城市和全国平均数据
+            const cityAverage = 45 + (Math.random() * 10 - 5);
+            const nationalAverage = 52 + (Math.random() * 8 - 4);
+            
+            document.getElementById('average-comparison').textContent = 
+                `${Math.round(cityAverage)}%`;
+            document.getElementById('national-average').textContent = 
+                `${Math.round(nationalAverage)}%`;
+            
+            // 创建图表
+            createCharts(finalScore, cityAverage, nationalAverage);
+            
+            // 生成洞察
+            generateInsights(finalScore);
+            
+            // 切换显示结果
+            document.getElementById('calculator').classList.add('hidden');
+            document.getElementById('result-container').classList.remove('hidden');
+        }
+        
+        // 创建图表
+        function createCharts(score, cityAvg, nationalAvg) {
+            // 销毁现有图表避免冲突
+            if (window.categoryChart) window.categoryChart.destroy();
+            if (window.comparisonChart) window.comparisonChart.destroy();
+            
+            // 场景分布图表
+            const categoryCtx = document.getElementById('category-chart').getContext('2d');
+            window.categoryChart = new Chart(categoryCtx, {
+                type: 'pie',
                 data: {
-                    labels: ['非常不满意', '不太满意', '一般', '比较满意', '非常满意'],
+                    labels: ['外卖', '便利店', '餐厅', '超市', '工作餐'],
                     datasets: [{
-                        label: '消费者评价分布',
-                        data: [15, 45, 25, 10, 5],
-                        backgroundColor: [
-                            'rgba(209, 138, 159, 0.7)',
-                            'rgba(209, 169, 138, 0.7)',
-                            'rgba(138, 159, 209, 0.7)',
-                            'rgba(138, 209, 184, 0.7)',
-                            'rgba(169, 138, 209, 0.7)'
-                        ],
-                        borderColor: [
-                            'rgba(209, 138, 159, 1)',
-                            'rgba(209, 169, 138, 1)',
-                            'rgba(138, 159, 209, 1)',
-                            'rgba(138, 209, 184, 1)',
-                            'rgba(169, 138, 209, 1)'
-                        ],
-                        borderWidth: 1
+                        data: [scores.takeout, scores.convenience, scores.restaurant, scores.supermarket, scores.work],
+                        backgroundColor: ['#F39C12', '#F1C40F', '#E67E22', '#D4AC0D', '#7ed6df']
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#F8F5F0'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 对比图表
+            const comparisonCtx = document.getElementById('comparison-chart').getContext('2d');
+            window.comparisonChart = new Chart(comparisonCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['你', '同城平均', '全国平均'],
+                    datasets: [
+                        {
+                            label: '暴露指数',
+                            data: [score, cityAvg, nationalAvg],
+                            backgroundColor: ['#E67E22', '#F39C12', '#E74C3C'],
+                            borderColor: ['#D35400', '#F1C40F', '#C0392B'],
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
                             ticks: {
-                                color: 'rgba(255, 255, 255, 0.7)'
+                                color: '#F8F5F0',
+                                callback: function(value) { return value + "%" }
                             }
                         },
                         x: {
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
                             ticks: {
-                                color: 'rgba(255, 255, 255, 0.7)'
+                                color: '#F8F5F0'
                             }
                         }
                     },
                     plugins: {
                         legend: {
                             labels: {
-                                color: 'rgba(255, 255, 255, 0.7)'
+                                color: '#F8F5F0'
                             }
                         }
                     }
                 }
             });
-        });
+        }
 
-        // 平滑滚动
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                
-                // 关闭移动菜单（如果打开）
-                document.getElementById('mobile-menu').classList.add('hidden');
-                
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
-                });
-            });
-        });
+        // 生成洞察
+        function generateInsights(score) {
+            const insightsList = document.getElementById('insights-list');
+            insightsList.innerHTML = "";
+            
+            // 示例洞察逻辑
+            if (score < 30) {
+                insightsList.innerHTML += `<li>你的饮食习惯较为健康，较少依赖预制菜。</li>`;
+            } else if (score < 60) {
+                insightsList.innerHTML += `<li>你适度依赖预制菜，建议适当增加新鲜食材比例。</li>`;
+            } else {
+                insightsList.innerHTML += `<li>你的生活高度依赖预制菜，建议关注食品成分与营养均衡。</li>`;
+            }
+        }
     </script>
 </body>
 </html>
