@@ -164,12 +164,34 @@
                             "几乎全都是预制菜，还那么贵，实在是太恶心了。希望国家尽早推动立法，强制饭馆注明是否用了预制菜。"
                         </p>
                     </div>
+                    <!-- 插入两张评论截图，响应式排列：小屏垂直，大屏并排 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4 items-center">
+                        <figure class="m-0">
+                            <img src="罗永浩评论一.png" alt="罗永浩评论一" class="w-full h-auto object-contain max-h-60 md:max-h-72 rounded-lg border border-accent/20 shadow-md">
+                            <figcaption class="text-xs text-light/60 mt-2">截图：社交媒体评论（1）</figcaption>
+                        </figure>
+                        <figure class="m-0">
+                            <img src="罗永浩评论二.png" alt="罗永浩评论二" class="w-full h-auto object-contain max-h-60 md:max-h-72 rounded-lg border border-accent/20 shadow-md">
+                            <figcaption class="text-xs text-light/60 mt-2">截图：社交媒体评论（2）</figcaption>
+                        </figure>
+                    </div>
                     <p class="text-light/90 mb-4 leading-relaxed">
-                        这句来自某微博用户的留言，道出了当下消费者对预制菜的普遍态度。一边是社交媒体上对预制菜的口诛笔伐，另一边却是预制菜市场规模的高速增长——2023年已突破3000亿元，年增长率保持在20%以上。
+                        这句来自某餐饮点评平台的留言，道出了当下消费者对预制菜的普遍态度。一边是社交媒体上对预制菜的口诛笔伐，另一边却是预制菜市场规模的高速增长——2023年已突破3000亿元，年增长率保持在20%以上。
                     </p>
                     <p class="text-light/90 leading-relaxed">
                         这种矛盾背后，是现代生活节奏与传统饮食文化的碰撞，是食品工业发展与消费知情权的博弈，也是效率与健康之间的永恒权衡。
                     </p>
+                    <!-- 主题一致的说明文本框 -->
+                    <div class="mt-6 bg-dark/70 p-5 rounded-lg border-l-4 border-warmYellow/40">
+                        <p class="text-light/90 leading-relaxed">
+                            近几年，预制菜逐渐进入大众视野，“脏”、“乱”、“差”、“不卫生”、“不健康”似乎成为了大众对于预制菜最鲜明的认知。当习以为常的后厨现制与预制菜的实际使用形成鲜明反差，消费者的不满情绪瞬间被点燃，预制菜也再次被推上舆论的风口浪尖。在社交平台上，“抵制预制菜”“餐厅预制菜就是欺骗”的声音此起彼伏，仿佛预制菜成了餐饮行业里“见不得光”的存在。
+                        </p>
+                    </div>
+                    <!-- 预制菜示意图：居中显示，响应式限制最大宽度和高度 -->
+                    <figure class="mt-6 text-center">
+                        <img src="预制菜图片.webp" alt="预制菜制作场景图" class="mx-auto w-full max-w-3xl h-auto object-contain rounded-lg border border-accent/20 shadow-md" style="max-height:360px;">
+                        <figcaption class="text-xs text-light/60 mt-2">图：预制菜制作场景图</figcaption>
+                    </figure>
                 </div>
             </div>
         </section>
@@ -179,6 +201,7 @@
         <!-- 消费态度部分 -->
         <section id="attitude" class="mb-24">
             <div class="max-w-6xl mx-auto">
+                
                 <div class="flex items-center mb-8">
                     <div class="h-px bg-tertiary/30 flex-grow"></div>
                     <h2 class="text-2xl sm:text-3xl font-serif font-semibold text-white px-4">消费态度的分裂</h2>
@@ -233,10 +256,29 @@
                     </div>
                     <div class="flex items-center justify-center bg-dark/70 p-6 rounded-xl border border-tertiary/20">
                         <div class="text-center w-full">
-                            <div class="text-sm text-light/80 mb-3">消费者综合评分</div>
-                            <img src="气泡图_信任度-健康评分-食用频率.png" alt="气泡图：信任度-健康评分-食用频率" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:8px;" />
+                                <div class="text-sm text-light/80 mb-3">消费者综合评分</div>
+                                <img src="气泡图_信任度-健康评分-食用频率.png" alt="气泡图：信任度-健康评分-食用频率" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:8px;" />
+                            </div>
                         </div>
-                    </div>
+
+                        <!-- 现状分析：移动后，关键数据高亮（跨两列显示） -->
+                        <div class="bg-dark/80 p-6 rounded-xl border border-tertiary/20 mb-8 md:col-span-2">
+                            <h3 class="text-xl sm:text-2xl font-serif font-semibold text-tertiary mb-4">现状分析</h3>
+                            <p class="text-light/90 leading-relaxed mb-4">第七次人口普查数据显示，2020年我国户均人口 <span class="text-accent font-semibold">2.62</span>，较上一次普查减少 <span class="text-accent font-semibold">0.48</span> 人，已不再是传统的“一家三口”。其中，“一人户”家庭超过 <span class="text-accent font-semibold">1.25亿户</span>。随着家庭越来越小，做饭的单位成本也随着人数的减少而提高。小型家庭对烹饪简易化的需求提升，会更倾向点外卖、选购预制菜，来满足操作便捷、“一人食”等需求。</p>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                <figure class="mx-auto w-full">
+                                    <img src="时间利用图片1.png" alt="时间利用 1" class="mx-auto w-full h-auto object-contain rounded-lg" style="max-height:320px;" />
+                                </figure>
+                                <figure class="mx-auto w-full">
+                                    <img src="时间利用图片2.png" alt="时间利用 2" class="mx-auto w-full h-auto object-contain rounded-lg" style="max-height:320px;" />
+                                </figure>
+                            </div>
+
+                            <div class="bg-dark/70 p-4 rounded-lg border border-tertiary/10">
+                                <p class="text-light/90 leading-relaxed">2024年国家统计局发布的《第三次全国时间利用》中显示，人均工作时间约为 <span class="text-accent font-semibold">六小时</span>，有偿劳动领域的活动参与率为 <span class="text-accent font-semibold">54.1%</span>，这个数字还未计入上班通勤和在公司的午休时间——也就是说，全国超过一半的人口一天接近一半的时间都在工作，而自由活动支配时间只有 <span class="text-accent font-semibold">三小时左右</span>。在高压的社会环境下，“打工人”本来就没有那么多心力给自己做饭，自由时间又被进一步压缩，“方便”、“便宜”的预制菜与其说是他们主动选择的理由，倒不如说是生活所迫——十分钟就能吃上的、不算贵的热饭，这已经足够有诱惑力的了。</p>
+                            </div>
+                        </div>
                 </div>
             </div>
         </section>
@@ -349,6 +391,22 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <!-- 原因分析（位于“餐厅的矛盾：隐瞒还是透明？”下方） -->
+                <div class="mt-6 bg-dark/70 p-5 rounded-lg border-l-4 border-warmYellow/40">
+                    <h3 class="text-lg sm:text-xl font-serif font-semibold text-warmYellow mb-3">原因分析</h3>
+                    <p class="text-light/90 leading-relaxed">
+                        老乡鸡的 “明牌” 策略，实则是对行业趋势的主动适配：作为主打 “家常味” 的连锁品牌，其门店数量超 1000 家，若依赖传统后厨现炒，既无法支撑规模化扩张，也难以保证全国门店口味统一。公开使用预制菜后，反而通过 “透明化” 赢得部分理性消费者认可，同时借助中央厨房预制 + 门店简单复热的模式，实现了成本优化与效率提升。
+
+                        </p>
+                        <p class="text-light/90 leading-relaxed">
+                            而更多餐厅选择 “暗地使用”，核心顾虑在于消费者认知偏差：在大众固有印象中，“现做现炒” 等于新鲜、优质，预制菜则被贴上 “不健康” 的标签。
+                        </p>
+                        <p class="text-light/90 leading-relaxed">
+                            此外，直到2025 年 9 月《预制菜食品安全国家标准》草案才明确 “餐饮门店需明示预制菜使用情况”，此前缺乏强制规定，为餐厅 “隐瞒使用” 提供了空间。
+                        </p>
+
+                    </p>
                 </div>
             </div>
         </section>
@@ -607,6 +665,27 @@
                                 show(1);
                             })();
                         </script>
+
+                        <!-- 担忧问题解答：插入于标准化生产流程下方（已移入容器以对齐边框） -->
+                        <div class="bg-dark/80 rounded-xl border border-warmOrange/20 p-5 mb-8 mt-6">
+                            <div class="text-center mb-4">
+                                <h3 class="text-xl font-serif font-bold text-warmOrange mb-2">担忧问题解答</h3>
+                            </div>
+                            <div class="space-y-4 text-light/90">
+                                <div>
+                                    <h4 class="text-accent font-semibold mb-1">关于防腐剂：</h4>
+                                    <p class="text-light/80 text-sm"><span class="text-warmOrange font-semibold">在合规的大型企业中，担忧得到了验证——他们确实不依赖防腐剂保鲜。</span> 但风险并未完全消失，它转移到了那些不合规的小作坊产品上。</p>
+                                </div>
+                                <div>
+                                    <h4 class="text-accent font-semibold mb-1">关于营养与健康：</h4>
+                                    <p class="text-light/80 text-sm"><span class="text-warmOrange font-semibold">部分担忧是真实的。</span> 工业化加工中的高温环节会导致一些热敏性维生素的损失。更重要的是，为了迎合大众口味和延长风味，不少预制菜确实存在钠与脂肪含量偏高的问题，这亦是超过<span class="text-accent font-semibold">36%</span>的受访者明确表达的忧虑。</p>
+                                </div>
+                                <div>
+                                    <h4 class="text-accent font-semibold mb-1">关于“海克斯科技”：</h4>
+                                    <p class="text-light/80 text-sm"><span class="text-warmOrange font-semibold">合法合规地使用国标允许的添加剂是安全的。</span> 真正的安全风险，来自于非法添加、超标使用或劣质原料，这仰赖于严格的生产自律与市场监管。</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -768,8 +847,8 @@
     <footer class="bg-dark border-t border-accent/30 py-8">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center text-light/60 text-sm">
-                <p>© 2025 小组作业 | 数据来源：行业报告与公开数据整理</p>
-                <p class="mt-2">仅作分享，不具有任何建议。成员：张籼艺，杨宁宁，鲍洁婷，王笔胜，符顺颖</p>
+                <p>© 2024 预制菜观察 | 数据来源：行业报告与公开数据整理</p>
+                <p class="mt-2">本网站仅作信息分享，不构成任何消费建议</p>
             </div>
         </div>
     </footer>
